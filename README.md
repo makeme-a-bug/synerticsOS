@@ -1,7 +1,7 @@
 <br/>
 <p align="center">
-  <a href="https://github.com/ShaanCoding/ReadME-Generator">
-    <img src="https://synertics.io/staticfiles/img/logo-vector.svg" alt="Logo" width="80" height="80">
+  <a href="https://github.com/makeme-a-bug/synerticsOS">
+    <img src="https://synertics.io/staticfiles/img/logo-vector.svg" alt="Logo" width="200" height="80">
   </a>
 
   <h3 align="center">OS Driver Deployment Solution</h3>
@@ -10,15 +10,15 @@
     Automate Dispatching Activities
     <br/>
     <br/>
-    <a href="https://github.com/ShaanCoding/ReadME-Generator">View Demo</a>
+    <a href="https://github.com/makeme-a-bug/synerticsOS">View Demo</a>
     .
-    <a href="https://github.com/ShaanCoding/ReadME-Generator/issues">Report Bug</a>
+    <a href="https://github.com/makeme-a-bug/synerticsOS/issues">Report Bug</a>
     .
-    <a href="https://github.com/ShaanCoding/ReadME-Generator/issues">Request Feature</a>
+    <a href="https://github.com/makeme-a-bug/synerticsOS/issues">Request Feature</a>
   </p>
 </p>
 
-![Downloads](https://img.shields.io/github/downloads/ShaanCoding/ReadME-Generator/total) ![Contributors](https://img.shields.io/github/contributors/ShaanCoding/ReadME-Generator?color=dark-green) ![Forks](https://img.shields.io/github/forks/ShaanCoding/ReadME-Generator?style=social) ![Stargazers](https://img.shields.io/github/stars/ShaanCoding/ReadME-Generator?style=social) ![Issues](https://img.shields.io/github/issues/ShaanCoding/ReadME-Generator) ![License](https://img.shields.io/github/license/ShaanCoding/ReadME-Generator) 
+![Contributors](https://img.shields.io/github/contributors/makeme-a-bug/synerticsOS?color=dark-green) ![Forks](https://img.shields.io/github/forks/makeme-a-bug/synerticsOS?style=social) ![Stargazers](https://img.shields.io/github/stars/makeme-a-bug/synerticsOS?style=social) ![Issues](https://img.shields.io/github/issues/makeme-a-bug/synerticsOS) ![License](https://img.shields.io/github/license/makeme-a-bug/synerticsOS) 
 
 ## Table Of Contents
 
