@@ -1,0 +1,58 @@
+{% extends 'bases/base.html' %}
+{% load static %}
+{% block title %} {% endblock %}
+
+{% block stylesheets %}
+<link href="https://unpkg.com/tabulator-tables/dist/css/tabulator.min.css" rel="stylesheet">
+<link href="{% static 'tabulator.min.css' %}" rel="stylesheet">
+<link href="{% static 'custom-tabulator.css' %}" rel="stylesheet">
+{% block baseStylesheets %}
+{% endblock %}
+
+{% endblock %}
+
+{% block scripts %}
+<script type="text/javascript" src="https://unpkg.com/tabulator-tables/dist/js/tabulator.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/moment@2.29.3/moment.min.js"></script>
+<script
+    src="https://maps.googleapis.com/maps/api/js?key={{googleApiKey}}&libraries=places">
+</script>
+{% block basescripts %}
+{% endblock %}
+
+{% endblock %}
+
+
+{% block css %}
+<style>
+    .search{
+        max-width: 280px;
+    }
+</style>
+{% block basecss %}
+{% endblock %}
+
+{% endblock %}
+
+{% block body %}
+
+{% block baseBody %}
+{% endblock %}
+
+{% endblock %}
+
+
+{% block js %}
+<script>
+$.ajaxSetup({
+        headers: {
+            'Authorization': 'Token {{userToken}}',
+        }
+});
+</script>
+    
+    {% block basejs %}
+    {% endblock %}
+{% endblock %}
+
+

@@ -1,0 +1,78 @@
+{% extends 'delivery/driver_app_base.html' %}
+{% block stylesheet %}
+{% endblock %}
+
+{% block css %}
+<style>
+    .trip-div{
+        border-radius: 10px;
+        background-color: #fff;
+        padding: 10px;
+        margin-bottom: 10px;
+        width:100%;
+        max-width: 350px;
+        cursor: pointer;
+    }
+    p{
+        color: rgb(34, 34, 34);
+        font-size: 14px;
+    }
+</style>
+{% endblock %}
+
+{% block body %}
+
+<h4 class="text-syn text-center">
+    Trips
+</h4>
+<div class="d-flex flex-column w-100 justify-content-start align-items-center py-2" style="max-height: calc(100vh - 110px);overflow-y: auto;">
+    
+    {% if trips %}
+    {% for trip in trips %}
+    <div class="d-flex trip-div justify-content-between align-items-start shadow border" data-id="{{trip.id}}">
+        <div>
+            <p class="m-0 mb-1 text-grey"> start Time </p>
+            <p class="m-0 mb-1"> 12 aug 2020 </p>
+        </div>
+        <div>
+            <p class="m-0 mb-1 text-grey"> total deliveries </p>
+            <p class="m-0 mb-1"> {{ trip.order_set.all|length }} </p>
+        </div>
+        <div class="d-flex flex-column">
+            <p class="m-0 mb-1"> {% widthratio trip.total_duration 60 1 %}<span class="text-grey"> min.</span> </p>
+            <p class="m-0 mb-1"> {% widthratio trip.total_distance 1000 1 %} <span class="text-grey">Km</span>  </p>
+        </div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <div class="d-flex flex-column trip-div justify-content-center align-items-center text-center" data-id="{{trip.id}}">
+        <h4 class='text-center text-syn text-center'>
+            <span class="fa-stack fa-2x">
+                <i class="fas fa-map-marker-alt fa-stack-1x"></i>
+                <i class="fas fa-ban fa-stack-2x"></i>
+            </span>
+        </h4>
+        <h5 class='text-center text-syn'>No trips at the moment</h5>
+    </div>
+    {% endif %}
+</div>
+
+
+{% endblock %}
+
+
+{% block scripts %}
+{% endblock %}
+
+{% block js %}
+
+<script>
+    $(document).ready(function(){
+        $(".trip-div").click(function(){
+            var trip_id = $(this).attr("data-id");
+            window.location.href = "/core/driverTrips/{{id}}/"+trip_id;
+        });
+    });
+</script>
+
+{% endblock %}

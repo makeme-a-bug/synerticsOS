@@ -1,0 +1,123 @@
+{% extends 'delivery/driver_app_base.html' %}
+{% block stylesheet %}
+{% endblock %}
+
+{% block css %}
+<style>
+    .trip-div{
+        border-radius: 10px;
+        background-color: #fff;
+        padding: 10px;
+        margin-bottom: 10px;
+        width:100%;
+        max-width: 350px;
+        cursor: pointer;
+    }
+    p{
+        color: rgb(34, 34, 34);
+        font-size: 14px;
+    }
+</style>
+{% endblock %}
+
+{% block body %}
+<a href="{% url 'delivery:driver_trips' id=id %}" class="text-syn h4" style="    position: absolute;
+right: 80px;"><i class="fas fa-arrow-alt-circle-left"></i></a>
+<h4 class="text-syn text-center">
+    Deliveries
+</h4>
+<div class="d-flex flex-column w-100 justify-content-start align-items-center py-2" style="max-height: calc(100vh - 110px);overflow-y: auto;">
+    {% if trip %}
+    {% for order in trip.order_set.all %}
+    <div class="d-flex flex-wrap trip-div justify-content-between align-items-start shadow border" id="{{order.id}}">
+        <div>
+            <p class="m-0 mb-1 text-grey"> Address </p>
+            <p class="m-0 mb-1"> {{order.address}} </p>
+        </div>
+        {% if order.status == 3 %}
+        <div class="d-flex w-100 justify-content-center mt-3">
+            <button class="btn btn-success"> Completed </button>
+        </div>
+        {% else %}
+        <div class="d-flex w-100 justify-content-between mt-3">
+        <button class="btn btn-success" onclick="change_status(3,'{{order.id}}')"> Complete </button>
+        <button class="btn btn-danger" onclick="change_status(0,'{{order.id}}')"> Cancel </button>
+        <a class="btn btn-primary" href="http://maps.google.com/maps?saddr={{trip.start_latitude}},{{trip.start_longitude}}&daddr={{order.latitude}},{{order.longitude}}" target="_blank"> Map </a>
+        </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+    {% else %}
+    {% endif %}
+</div>
+{% endblock %}
+
+
+{% block scripts %}
+{% endblock %}
+
+{% block js %}
+
+<script>
+    function getCookie(name) {
+        var cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            var cookies = document.cookie.split(';');
+            for (var i = 0; i < cookies.length; i++) {
+                var cookie = jQuery.trim(cookies[i]);
+                // Does this cookie string begin with the name we want?
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    var csrftoken = getCookie('csrftoken');
+
+    function csrfSafeMethod(method) {
+        // these HTTP methods do not require CSRF protection
+        return (/^(GET|HEAD|OPTIONS|TRACE)$/.test(method));
+    }
+    $.ajaxSetup({
+        beforeSend: function(xhr, settings) {
+            if (!csrfSafeMethod(settings.type) && !this.crossDomain) {
+                xhr.setRequestHeader("X-CSRFToken", csrftoken);
+            }
+        }
+    });
+    change_status = (status,id) => {
+        $.ajax({
+            url:"{% url 'delivery:driver_ind_trip' id=id trip_id=trip_id %}",
+            method:"POST",
+            data:{
+                status:status,
+                id:id
+            },
+            success:function(data){
+                el = document.getElementById(`${id}`)
+                if (status == 0){
+                    el.remove()
+                }
+                else if(status == 3){
+                    el.innerHTML = `
+                    <div>
+                        <p class="m-0 mb-1 text-grey"> Address </p>
+                        <p class="m-0 mb-1"> ${data.address} </p>
+                    </div>
+                    <div class="d-flex w-100 justify-content-center mt-3">
+                        <button class="btn btn-success"> Completed </button>
+                    </div>
+                    `
+                }
+            },
+            error:function(data){
+                console.log(data);
+            }
+        })
+    }
+</script>
+
+{% endblock %}

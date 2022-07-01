@@ -1,0 +1,942 @@
+{% extends 'delivery/base.html' %}
+{% load static %}
+
+{% block title %} Trips {% endblock %}
+
+{% block baseStylesheets %}
+<link href='https://api.mapbox.com/mapbox-gl-js/v2.0.1/mapbox-gl.css' rel='stylesheet' />
+{% endblock %}
+
+
+
+{% block basecss %}
+<style>
+    .map-sidebar{
+    top: 50px;
+    left: 0;
+    z-index: 1;
+    max-height: calc(100vh - 50px);
+    overflow-y: scroll;
+    /* height: 100%; */
+    max-width: 500px;
+    min-width: 250px;
+    width: 100%;
+    overflow-y: scroll;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none;  /* Internet Explorer 10+ */
+    }
+    .map-sidebar::-webkit-scrollbar { /* WebKit */
+        width: 0;
+        height: 0;
+    }
+    .visibility-icon{
+        cursor: pointer;
+    }
+    #orders_table{
+        max-height: 600px;
+        max-width: 100%;
+        padding: 0;
+    }
+    #mapid{
+        width: 100%;
+        height: calc(100vh - 50px);
+    }
+    .small-txt{
+        font-size: 12px;
+    }
+</style>
+{% endblock %}
+
+{% block baseBody %}
+
+<div class='col-lg-4 col-md-6 col-sm-12 col-12 p-2 position-fixed my-2 map-sidebar'>
+    
+    <div class="row mx-1 py-2 px-3 background-white rounded shadow bg-white" id="tripsBar">
+    <input id="current" type="date" class="form-control"/>
+        <div id="trips_div" class="p-2">
+            
+        </div>
+        
+    </div>
+</div>
+<div id="mapid"></div>
+
+<div class="modal fade" id="driverModal" aria-labelledby="driverModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" >
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="driverModalLabel">Driver Change</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+            <form action="" class="d-flex flex-column" id="deliveryForm">
+                {% csrf_token %}
+                <input type="hidden" name="trip_id" id="trip_id" value="">
+                <select name="driver" id="id_driver" class="form-select form-select-sm"></select>
+            </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-primary mx-auto" onclick="change_driver()" id="addDelivery">save</button>
+        </div>
+      </div>
+    </div>
+</div>
+
+{% endblock %}
+
+
+
+
+{% block basejs %}
+<script src="https://unpkg.com/leaflet@1.6.0/dist/leaflet.js"integrity="sha512-gZwIG9x3wUXg2hdXF6+rVkLF/0Vi9U8D2Ntg4Ga5I5BZpVkVxlJWbSQtXPSiUTtC0TjtGOmxa1AJPuV0CPthew=="crossorigin=""></script>
+<script src='https://api.mapbox.com/mapbox-gl-js/v2.0.1/mapbox-gl.js'></script>
+<script src="{% static 'js/flexiblePolyline.js' %}"></script>
+
+<script>
+    document.getElementById('current').value = moment().format('YYYY-MM-DD')
+    document.getElementById('current').addEventListener('change', function(){
+        get_trips()
+    })
+    let driverModal = new bootstrap.Modal(document.getElementById('driverModal'), {})
+
+    document.getElementById('driverModal').addEventListener('shown.bs.modal',()=>{
+            $.get("{% url 'delivery:driver-list'  %}").then((res)=>{
+                drivers = ''
+                res.forEach((driver)=>{
+                    drivers += `<option value="${driver.id}">${driver.name} ${driver.email}</option>`
+                })
+                document.getElementById('id_driver').innerHTML = drivers
+            })
+    })
+    
+    Notiflix.Block.hourglass("#tripsBar")
+
+    mapboxgl.accessToken = '{{mapboxApiKey}}'
+
+    var map = new mapboxgl.Map({
+        container: 'mapid',
+        style: 'mapbox://styles/mapbox/streets-v11',//'mapbox://styles/mapbox/streets-v11',//'mapbox://styles/cosmoboiy/ckug8xffi8jnq17prcevd5q9o',
+        center: [8.699088662141811,50.301355799999996],
+        zoom: 8
+    });
+
+    const tripsDiv = document.querySelector('#trips_div')  
+    var visible_trips;
+    var colors=[]
+    const statuses = {0:"Unassgined",1:"Assigned",2:"Deployed",3:"Completed"}
+    const statuses_color = {0:"#cdcdcd",1:"#126caa",2:"#5d3bc5",3:"#39831b"}
+    var Trip_colors;
+    var images;
+    var table;
+    var trips = [];
+    var visible_routes = [];
+    var visible_pins = [];
+    var visible_polygons = [];
+    var driver_latlon=[];
+
+    const filterTrips = (trips)=>{
+        return trips.filter((trip)=>{
+            return check_trip_status(trip.orders) in [0,1,2]
+        })
+    }
+
+    const remove_all_layers=()=>{
+        if (map.getLayer("drivers")) {
+            map.removeLayer("drivers");
+        }
+        if(map.getLayer("routes")){
+            map.removeLayer("routes");
+        }
+        if(map.getLayer("orders")){
+            map.removeLayer("orders");
+        }
+        if(map.getLayer("polygons")){
+            map.removeLayer("polygons");
+        }
+
+    }
+
+    const get_trips = ()=>{
+        currentTime =  moment(document.getElementById('current').value+" 00:00:00").utc(true);
+        nextTime =  moment(currentTime).add(59, 'minutes').add(23,'hours');
+        $.get(`{% url "delivery:trip-list" %}?start_time__lte=${nextTime.unix()}&start_time__gte=${currentTime.unix()}`)
+        .then((res)=>{
+            trips = res
+            trips = filterTrips(res)
+            if (trips.length == 0){
+                document.getElementById("trips_div").innerHTML = `<h4 class='text-center text-syn'>
+                                                                    <span class="fa-stack fa-2x">
+                                                                        <i class="fas fa-map-marker-alt fa-stack-1x"></i>
+                                                                        <i class="fas fa-ban fa-stack-2x"></i>
+                                                                    </span>
+                                                                </h4>
+                                                                <h5 class='text-center text-syn'>No trips at the moment</h5>`
+                remove_all_layers()
+                return
+
+            }
+            get_colors(trips)
+            get_Images()
+            createPartialDivs(trips,true)
+            create_orders_geojson(trips)
+        })
+        .catch((err)=>{
+            Notiflix.Block.remove("#tripsBar")
+        })
+    }
+
+
+    map.on('load', function() {
+        get_trips();
+        Notiflix.Block.remove("#tripsBar")
+
+    })
+
+
+
+    getDarkColor = () =>{
+        var color = '#';
+        for (var i = 0; i < 6; i++) {
+            color += Math.floor(Math.random() * 10);
+        }
+        return color;
+    }   
+
+
+
+    const get_colors = (routes) =>{
+        visible_trips=[]
+        visible_routes = []
+        visible_pins = []
+        visible_polygons = []
+        colors=[]
+        Trip_colors={}
+        routes.map((route)=>{
+            found = true
+            while (found){
+                color = getDarkColor()
+                if (!colors.includes(color)){
+                    found = false
+                }
+            }
+            visible_trips.push(route.id+"")
+            visible_routes.push(route.id+"")
+            visible_pins.push(route.id+"")
+            visible_polygons.push(route.id+"")
+            Trip_colors[route.id+""]=color
+            colors.push(color)
+        })
+
+        Trip_colors['notAssigned'] = "#000"
+    }
+
+    const get_Images = ()=>{
+        for(var key in images){
+            map.removeImage(`custom-marker-${key}`)
+        }
+        urls = []
+        images={}
+        for(var key in Trip_colors){
+            images[key]=`custom-marker-${key}`
+            urldata = {"url":`https://api.tiles.mapbox.com/v3/marker/pin-s+${Trip_colors[key].replace("#","")}.png`,"id":`custom-marker-${key}`}
+            urls.push(urldata)
+            }
+            console.log(urls)
+            urls.forEach(img => {
+                map.loadImage(img.url, function(error, res) {
+                    map.addImage(img.id, res)
+                })
+            })
+    }
+
+
+    function create_orders_geojson(trips){
+
+        orders_geojson = {
+            "type": "FeatureCollection",
+            "features": []
+        }
+
+        routes_geojson = {
+            "type": "FeatureCollection",
+            "features": []
+        }
+
+        polygons_geojson = {
+            "type": "FeatureCollection",
+            "features": []
+        }
+
+        driver_geojson = {
+            "type": "FeatureCollection",
+            "features": []
+        }
+
+        trips.forEach((trip)=>{
+            trip.orders.forEach((order)=>{
+                let orderData = {
+                    "type": "Feature",
+                    "properties": {id:order.id+"" , colorID:trip.id+"",trip:trip.id+"",number:order.stop_id},
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [order.longitude,order.latitude]
+                    }
+                }   
+                orders_geojson.features.push(orderData)
+            })
+            polyline = decode(trip.polyline)        
+            let routeData = {
+                    "type": "Feature",
+                    "properties": {'id':trip.id+"" ,"colorID":trip.id+"","trip":trip.id+""},
+                    "geometry": {
+                        "type": "LineString",
+                        "coordinates": polyline.polyline
+                    }
+            }
+            if (!!trip.polygon && !!trip.polygon.trim()){
+                polygon = decode(trip.polygon)
+                let polygonsData = {
+                    "type": "Feature",
+                    "properties": {'id':trip.id+"" ,"colorID":trip.id+"","trip":trip.id+""},
+                    "geometry": {
+                        "type": "LineString",
+                        "coordinates": polygon.polyline
+                    }
+                }
+                polygons_geojson.features.push(polygonsData)
+            }
+            routes_geojson.features.push(routeData)
+            
+            let driverData = {
+                "type": "Feature",
+                    "properties": {'id':trip.id+"" ,"colorID":trip.id+"","trip":trip.id+""},
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [trip.start_longitude,trip.start_latitude]
+                    }
+            }
+
+            driver_latlon = [trip.start_longitude,trip.start_latitude]
+
+            driver_geojson.features.push(driverData)
+
+        })
+        console.log(orders_geojson)
+        add_routes_layer(routes_geojson)
+        add_polygon_layer(polygons_geojson)
+        add_orders_layer(orders_geojson)
+        add_drivers_layer(driver_geojson)
+
+
+    }
+
+
+    async function add_drivers_layer(data){
+        if (map.getLayer("drivers")) {
+            map.removeLayer("drivers");
+        }
+        
+        if (map.getSource("driversSource")) {
+            map.removeSource("driversSource");
+        }
+
+        map.addSource('driversSource', {
+        'type': 'geojson',
+        'data':data
+        });
+
+
+        if (!map.hasImage("driver_img")){
+            let url = '{% static "img/Ellipse.png" %}';
+            map.loadImage(url, function(err, image) {
+            if (err) {
+            console.error('err image', err);
+            return;
+            }
+            map.addImage('driver_img', image);
+            map.addLayer({
+                'id': 'drivers',
+                'type': 'symbol',
+                'source': 'driversSource',
+                'layout': {
+                    'icon-allow-overlap': true,
+                    'text-allow-overlap':true,
+                    'icon-image': 'driver_img',
+                    }
+                });
+            })  
+        }
+        else{
+            map.addLayer({
+                'id': 'drivers',
+                'type': 'symbol',
+                'source': 'driversSource',
+                'layout': {
+                    'icon-allow-overlap': true,
+                    'text-allow-overlap':true,
+                    'icon-image': 'driver_img',
+                    }
+                });
+        }
+        map.flyTo({
+            center: driver_latlon
+        });
+
+    }
+
+    async function add_polygon_layer(data){
+        if (map.getLayer("polygons")) {
+            map.removeLayer("polygons");
+        }
+        if (map.getSource("polygonsSource")) {
+            map.removeSource("polygonsSource");
+        }
+        line_color=['match',['get','colorID']]
+        for(var key1 in Trip_colors){
+            line_color.push(key1)
+            line_color.push(Trip_colors[key1])
+        }
+        line_color.push("#888")
+
+
+        map.addSource('polygonsSource', {
+            'type': 'geojson',
+            'data':data
+        });
+
+        map.addLayer({
+            'id': 'polygons',
+            'type': 'fill',
+            'source': 'polygonsSource',
+            'layout': {},
+            'paint': {
+            'fill-color': line_color, // blue color fill
+            'fill-opacity': 0.5
+            }
+        });
+    }
+
+
+    async function add_routes_layer(data){
+        if (map.getLayer("routes")) {
+            map.removeLayer("routes");
+        }
+        if (map.getLayer("arrow-layer")) {
+            map.removeLayer("arrow-layer");
+        }
+        if (map.getSource("routesSource")) {
+            map.removeSource("routesSource");
+        }
+        line_color=['match',['get','colorID']]
+        for(var key1 in Trip_colors){
+            line_color.push(key1)
+            line_color.push(Trip_colors[key1])
+        }
+        line_color.push("#888")
+
+
+        map.addSource('routesSource', {
+            'type': 'geojson',
+            'data':data
+        });
+
+        map.addLayer({
+            'id': 'routes',
+            'type': 'line',
+            'source': 'routesSource',
+            'layout': {
+                'line-join': 'round',
+                'line-cap': 'round'
+            },
+            'paint': {
+                'line-color': line_color,
+                // '#888',
+                'line-width': 5
+            }
+        });
+        if (!map.hasImage("arrow")){
+            let url = 'https://i.imgur.com/LcIng3L.png';
+            map.loadImage(url, function(err, image) {
+            if (err) {
+            console.error('err image', err);
+            return;
+            }
+            map.addImage('arrow', image);
+            map.addLayer({
+            'id': 'arrow-layer',
+            'type': 'symbol',
+            'source': 'routesSource',
+            'layout': {
+                'symbol-placement': 'line',
+                'symbol-spacing': 1,
+                'icon-allow-overlap': true,
+                // 'icon-ignore-placement': true,
+                'icon-image': 'arrow',
+                'icon-size': 0.045,
+                'visibility': 'visible'
+            }
+            });
+        });         
+        }
+        else {
+            map.addLayer({
+                'id': 'arrow-layer',
+                'type': 'symbol',
+                'source': 'routesSource',
+                'layout': {
+                    'symbol-placement': 'line',
+                    'symbol-spacing': 1,
+                    'icon-allow-overlap': true,
+                    // 'icon-ignore-placement': true,
+                    'icon-image': 'arrow',
+                    'icon-size': 0.045,
+                    'visibility': 'visible'
+                }
+                });
+        }
+        // map.moveLayer('driver');
+        
+    }
+
+    async function add_orders_layer(data){
+        if (map.getLayer("orders")) {
+            map.removeLayer("orders");
+        }
+        
+        if (map.getSource("ordersSource")) {
+            map.removeSource("ordersSource");
+        }
+
+        
+        line_color=['match',['get','colorID']]
+        for(var key1 in images){
+            line_color.push(key1)
+            line_color.push(images[key1])
+        }
+        line_color.push("custom-marker")
+
+
+
+        map.addSource('ordersSource', {
+        'type': 'geojson',
+        'data':data
+        });
+
+        map.addLayer({
+        'id': 'orders',
+        'type': 'symbol',
+        'source': 'ordersSource',
+        'layout': {
+            'icon-allow-overlap': true,
+            'text-allow-overlap':true,
+            'icon-image': line_color,
+            // get the title name from the source's "title" property
+            'text-field': ['get', 'number',],
+            'text-font': [
+            'Open Sans Semibold',
+            'Arial Unicode MS Bold'
+            ],
+            'text-size': 11,
+            'text-offset': [0, 0.25],
+            'text-anchor': 'top'
+            }
+        });
+        
+    }
+
+    const show_driver_form = (id) =>{
+        document.getElementById("trip_id").value = id
+        driverModal.show()
+    }
+
+    const check_trip_status = (orders) =>{
+        let status = []
+        orders.forEach((order)=>{
+            status.push(order.status)
+        })
+        return Math.min(...status)
+    }
+
+    const status_change = (id,status) =>{
+        if (status >=0 && status <=2){
+            return `<li><span class="dropdown-item" onclick= "change_status('${id}',${status+1})"> <i class="fas fa-toggle-on"></i> ${statuses[status+1]} </span></li>`
+
+        }
+        return ``
+    }
+
+
+    async function createPartialDivs(routes,ne = false) {
+        text = ''
+
+        if (ne == true){
+            visible_trips = []
+            routes.forEach((order)=>{
+                    visible_trips.push(order.id+"")
+            })
+        }
+
+        
+
+        routes.forEach((el, index)=>{
+        let status = check_trip_status(el.orders)
+        text += `
+            <div class="card my-2 background-grey ${index==routes.length-1 ? 'anchor' :''}" id="tripDiv_${el.id}"  >
+                <div class="w-100 text-center small-txt rounded" style="background:${statuses_color[status]}; color:white;">
+                    <span> ${statuses[status]}</span>
+                </div>
+                <div class="card-content">
+                <div class="card-body p-0 ">
+                    <div class="media d-flex flex-wrap">
+                    <div class="media-body w-100 d-flex justify-content-between align-items-center sytext2 flex-wrap p-2">
+                            <div class="d-flex flex-column flex-grow justify-content-center align-items-center" stlye="height:50px">
+                                <div class="d-flex flex-nowrap  flex-grow justify-content-center align-items-center h50">
+                                    <div class='flex-shrink-1 text-right' onclick="toggle_trip(this,'${el.id}')">
+                                        <p class="my-0 fw-600"><i class="far fa-eye visibility-icon text-syn icon-${el.id}"></i></p>
+                                        <input type='checkbox' id='trip_${el.id}' checked hidden>
+                                    </div>
+                                    <div class='flex-shrink-1 text-right ms-1' onclick="toggle_visibility(this,'${el.id}','pin')" style="cursor: pointer">
+                                        <p class="my-0 fw-600"><i class="fas fa-map-pin text-syn" id="icon_pin_${el.id}"></i></p>
+                                        <input type='checkbox' id='trip_pin_${el.id}' checked hidden>
+                                    </div>
+                                </div>
+                                <div class="d-flex flex-nowrap flex-grow justify-content-center align-items-center h50">
+                                    <div class='flex-shrink-1 text-right cursor-pointer' onclick="toggle_visibility(this,'${el.id}','route')" style="cursor: pointer">
+                                        <p class="my-0 fw-600"><i class="fas fa-route text-syn" id="icon_route_${el.id}"></i></p>
+                                        <input type='checkbox' id='trip_route_${el.id}' checked hidden>
+                                    </div>
+                                    <div class='flex-shrink-1 text-right ms-1' onclick="toggle_visibility(this,'${el.id}','polygon')" style="cursor: pointer">
+                                        <p class="my-0 fw-600 "><i class="fas fa-draw-polygon text-syn" id="icon_polygon_${el.id}"></i></p>
+                                        <input type='checkbox' id='trip_polygon_${el.id}' checked hidden>
+                                    </div>
+                                </div>
+
+                            </div>
+                            <div class='d-flex h50 mx-3 ' style="height:50px;width: 12px;border: 1px solid white;background:${Trip_colors[el.id]}">
+                                
+                            </div>
+                            <div class="d-flex flex-column text-left justify-content-around flex-fill small-txt">
+                                <span class="flex-fill">Total Orders <span class="fw-600 text-syn">${el.orders.length}</span></span>
+                                <span class="flex-fill">Assigned To <span class="fw-600 text-syn">${el.driver.name}</span>  <i class="fas fa-paper-plane cursor-pointer" onclick="send_mail('${el.driver.id}')"></i></span>
+                                
+                            </div>
+                            <div class='d-flex flex-column text-left justify-content-around small-txt'>
+                                <span class="me-3">${(el.total_duration/60).toFixed(2)}  <span class="fw-600 text-syn">min.</span></span>
+                                <span>${(el.total_distance/1000).toFixed(2)}  <span class="fw-600 text-syn">km</span></span>
+                            </div>
+                            <div class='d-flex flex-column text-left justify-content-around'>
+                                <div class="btn-group dropend">
+                                    <i class="fas fa-ellipsis-v" type="button" id="dropdownMenuButton1" data-bs-toggle="dropdown" aria-expanded="false"></i>
+                                    <ul class="dropdown-menu small-txt" aria-labelledby="dropdownMenuButton1">
+                                        <li><span class="dropdown-item" onclick="show_driver_form('${el.id}')" > <i class="fas fa-user"></i> Change driver </span></li>
+                                        ${status_change(el.id,status)}
+                                        <li><span class="dropdown-item text-danger" onclick="conform_delete('${el.id}')"><i class="fas fa-trash"></i> Delete</span></li>
+                                    </ul>
+                                </div>
+                            </div>
+                    </div>
+                    <div class='row text-center w-100 mx-0 rounded' style="background:#EAEAEA;">
+                        <p class="visibility-icon text-syn my-0" id="detail_icon_${el.id}" onclick="createTableforTrip(this)"><i class="fas fa-chevron-down"></i></p>
+                    </div>
+                    </div>
+                </div>
+                </div>
+            </div>
+            `  
+
+            })
+
+            
+            if (ne == true){
+                document.getElementById("trips_div").innerHTML = text 
+            }
+            else{
+                document.getElementById("trips_div").innerHTML += text
+                apply_filter()
+            }
+
+        }
+
+
+    
+    const removeDelivery = (id)=>{
+        Notiflix.Block.hourglass("#tripsBar")
+        $.ajax({
+            url: `{% url 'delivery:order-remove-trip' pk=0 %}`.replace('0',id),
+            type: "POST",
+            success: function(data){
+                Notiflix.Block.remove("#tripsBar")
+                get_trips()
+            },
+            error: function(err){
+                Notiflix.Block.remove("#tripsBar")
+                Notiflix.Notify.failure('Trip could not be updated')
+            }
+        })
+    }
+
+
+
+    const optionFormatter = (cell, formatterParams, onRendered) =>{
+        return `<i class="fas fa-minus text-danger" onclick="removeDelivery('${cell.getValue()}')"></i>`
+    }
+
+
+
+    const create_table = () =>{
+        table = new Tabulator("#orders_table", {
+            data:[{'id':0}], //assign data to table
+            layout:"fitColumns", //fit columns to width of table (optional)
+            columns:[ //Define Table Columns
+                {title:"", field:"id", width:50,formatter:optionFormatter,headerSort:false},
+                {title:"Order id", field:"id", width:100},
+                {title:"Stop ID", field:"stop_id",  hozAlign:"left",minWidth:100},
+                {title:"Arrival Time", field:"arrival_time",minWidth:150},
+                {title:"Departure Time", field:"end_time",  hozAlign:"left",minWidth:180},
+                {title:"Duration (Min.)", field:"duration",  hozAlign:"left",minWidth:100},
+                {title:"Distance (km)", field:"distance",  hozAlign:"left",minWidth:100},
+                {title:"Order type", field:"order_type",minWidth:100,},
+                // {title:"Time From", field:"time_from",minWidth:150,},
+                // {title:"Time To", field:"time_to",minWidth:150,},
+            ],
+        });
+    }
+
+    async function setData(id){
+        data = []
+        trips.map((trip)=>{
+            if (trip.id === id){
+                trip.orders.map((route)=>{
+                    temp = route.order
+                    tempRoute ={...route}
+                    tempRoute .distance = (route.distance/1000).toFixed(2)
+                    tempRoute .duration = (route.duration/60).toFixed(2)
+                    tempRoute .arrival_time = moment.utc(route.arrival_time*1000).format("HH:mm:ss")
+                    tempRoute .end_time= moment.utc(route.end_time*1000).format("HH:mm:ss")
+                    tempRoute .time_from= moment.utc(route.time_from*1000).format("HH:mm:ss")
+                    tempRoute .time_to= moment.utc(route.time_to*1000).format("HH:mm:ss")
+                    data.push({...tempRoute ,...temp})
+                })
+                            
+            }
+        })
+        create_table()
+        table.on("tableBuilt",  ()=>{
+            table.replaceData([])
+            table.addData(data)
+            table.redraw()
+        });
+
+    }
+
+    hidedetails = (e,sp)=>{
+        if(!!table){
+            table.destroy()
+        }
+        tab = document.getElementById("orders_table")
+        if(!!tab){
+            tab.remove()
+        } 
+        $(`[id *= "detail_icon_"]`).attr("onClick", `createTableforTrip(this)`);
+        $(`[id *= "detail_icon_"]`).html('<i class="fas fa-chevron-down"></i>');
+    }
+
+    createTableforTrip = async (e)=>{
+        id = e.getAttribute('id').replace('detail_icon_','')
+        $(`[id *= "detail_icon_"]`).html('<i class="fas fa-chevron-down"></i>');
+        $('[id *= "detail_icon_"]').attr("onClick", `createTableforTrip(this)`)
+        tab = document.getElementById("orders_table")
+        if(!!tab){
+            tab.remove()
+        }
+        
+        el = document.getElementById(`tripDiv_${id}`)
+        el.innerHTML += `
+            <div id="orders_table" class='table-borderless table-dark table-striped'>
+            </div>`
+            
+
+        setData(id)
+        document.getElementById(`detail_icon_${id}`).setAttribute("onClick", `hidedetails(this)`);
+        $(`#detail_icon_${id}`).html('<i class="fas fa-chevron-up"></i>');
+            
+
+
+    }
+
+
+
+    
+
+
+
+    async function toggle_visibility(e,id,typ){
+        el = document.getElementById(`trip_${typ}_${id}`)
+        el.checked = !el.checked;
+        icon = document.getElementById(`icon_${typ}_${id}`)
+        ls = []
+        if (typ == 'polygon') ls = visible_polygons
+        if(typ == 'pin') ls = visible_pins
+        if(typ == 'route') ls = visible_routes
+
+        if (el.checked) {
+            ls.push(id)
+            icon.classList.add('text-syn');
+            icon.classList.remove('text-grey');
+
+        }
+        else{
+            index = ls.indexOf(id);
+            if (index > -1) {
+                ls.splice(index, 1);
+                icon.classList.remove('text-syn');
+                icon.classList.add('text-grey');
+            }
+        }
+
+        apply_filter()
+        
+    }
+
+
+    async function toggle_trip(e,id){
+        el = document.getElementById(`trip_${id}`)
+        el.checked = !el.checked;
+        icon = document.getElementsByClassName(`icon-${id}`)[0]
+        if (!visible_trips.some( item=> item == id+"" )){
+            visible_trips.push(id+"")
+            icon.classList.remove('text-grey')
+            icon.classList.add('text-syn');
+
+        }
+        else{
+            index = visible_trips.indexOf(id+"");
+            if (index > -1) {
+                visible_trips.splice(index, 1);
+                icon.classList.remove('text-syn')
+                icon.classList.add('text-grey')
+
+
+            }
+        }
+        apply_filter()
+        
+    }
+
+
+    const buildFilter = (arr,typ) =>{
+        var filter = ['in', typ];
+
+        if (arr.length === 0) {
+            return filter;
+        }
+        
+        for(var i = 0; i < arr.length; i += 1) {
+            filter.push(arr[i]);
+        }
+
+        filter.push('notAssigned')
+        
+        console.log(filter)
+        return filter;
+    }
+
+    async function apply_filter(){
+        map.setFilter("orders", ['all' , buildFilter(visible_pins,'trip') , buildFilter(visible_trips,'trip')]);
+        map.setFilter("routes", ['all' , buildFilter(visible_routes,'trip'), buildFilter(visible_trips,'trip')]);
+        map.setFilter("arrow-layer", ['all' , buildFilter(visible_routes,'trip'), buildFilter(visible_trips,'trip')]);
+        map.setFilter("polygons",['all' ,  buildFilter(visible_polygons,'trip'), buildFilter(visible_trips,'trip')]);
+        map.setFilter("drivers",['all' ,  buildFilter(visible_pins,'trip'), buildFilter(visible_trips,'trip')]);
+    }
+
+    const conform_delete = (id)=>{
+        Notiflix.Confirm.show(
+            'Delete Trip',
+            `Do you want to delete the trip?`,
+            'Delete',
+            'Cancel',
+        ()=>{
+            delete_trip(id)
+        },
+        () => {},
+        {
+            okButtonColor: '#fff',
+            okButtonBackground: '#af3834',
+        },
+        );
+    }
+
+    const delete_trip = (id) =>{
+        $.ajax({
+            url: `{% url 'delivery:trip-detail' pk=0 %}`.replace("0",id),
+            type: 'DELETE',
+            success: function(data) {
+                get_trips()
+                Notiflix.Notify.success('Trip deleted successfully');
+            },
+            error: function(err){
+                Notiflix.Notify.failure('Trip could not be deleted');
+            }
+        });
+    }
+
+    const change_driver=()=>{
+        id = document.getElementById('trip_id').value;
+        data = document.getElementById('id_driver').value
+        Notiflix.Block.hourglass("#driverModal .modal-content")
+        $.ajax({
+            url: `{% url 'delivery:trip-driver-update' pk=0 %}`.replace("0",id),
+            type: 'POST',
+            data: JSON.stringify({
+                driver:document.getElementById('id_driver').value
+            }),
+            contentType: 'application/json',
+            success: function(data) {
+                get_trips()
+                Notiflix.Block.remove("#driverModal .modal-content")
+                Notiflix.Notify.success(`Driver changed!`);
+                driverModal.hide();
+            },
+            error: function(){
+                Notiflix.Block.remove("#driverModal .modal-content")
+                Notiflix.Notify.failure(`Driver change failed!`);
+
+            }
+        });
+    }
+
+
+    const change_status=(id,status)=>{
+        data = document.getElementById('id_driver').value
+        $.ajax({
+            url: `{% url 'delivery:trip-bulk-order-update' %}`,
+            type: 'POST',
+            data: JSON.stringify({
+                id:id,
+                data: {
+                    status: status,
+                }
+            }),
+            contentType: 'application/json',
+            success: function(data) {
+                get_trips()
+            }
+        });
+    }
+
+
+    const send_mail = (id) =>{
+        $.ajax({
+            url: `{% url 'delivery:driver-send-mail' pk=0 %}`.replace("0",id),
+            type: 'POST',
+            success: function(data) {
+                Notiflix.Notify.success('Mail sent successfully');
+            },
+            error: function(err){
+                Notiflix.Notify.failure('Mail could not be sent');
+            }
+        });
+    }
+
+</script>
+{% endblock %}

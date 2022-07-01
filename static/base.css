@@ -1,0 +1,119 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
+:root{
+    --darkBlue:#00204A;
+    --mediumBlue:#005792;
+    --blue: #00BBF0;
+    --synBlue:#126caa;
+    --lightBlue: #EFFBFF;
+    --white: #ffffff;
+    --grey:#8c8c8c;
+    --synBlueHover:#116196;
+    --maxHeight:calc(100vh - 50px);
+}
+body{
+    font-family: 'poppins';
+}
+.logo{
+    height: 65px;
+    width: 190px;
+}
+.h-50p{
+    height: 50px;
+}
+.h-70p{
+    height: 70px;
+}
+.h100-70{
+    min-height:calc(100vh - 70px)
+}
+.h100-50{
+    min-height:var(--maxHeight)
+}
+.text-syn{
+    color: var(--synBlue);
+}
+.text-grey{
+    color: var(--grey);
+}
+.fw-600{
+    font-weight: 600;
+}
+.link-grey{
+    color: var(--grey);
+    text-decoration: none
+}
+.link-grey:hover{
+    color: var(--grey);
+    text-decoration: underline
+}
+.btn-primary{
+    background-color: var(--synBlue);
+    border-color: var(--synBlue);
+}
+.btn-primary:hover,.btn-primary:focus{
+    background-color: var(--synBlueHover);
+    border-color: var(--synBlueHover);
+}
+.btn-danger{
+    background-color: #a02622;
+    border-color: #a02622
+}
+.btn-danger:hover{
+    background-color: #af3834;
+    border-color: #af3834;
+}
+.bg-primary{
+    background-color: var(--synBlue) !important;
+}
+.hide-div{
+    display: none;
+}
+/* ::-webkit-scrollbar {
+    display: none;
+} */
+
+.form-control:focus{
+    box-shadow:none;
+}
+.pac-container{
+    z-index: 9999;
+}
+
+label[id ^= "error_"]{
+    font-size: 11px;
+}
+
+
+.dropdown-item{
+    cursor: pointer;
+}
+
+.syn-link{
+    position: relative;
+    color: #126caa;
+    text-decoration: none;
+    cursor: pointer;
+}
+.syn-link:hover::before{
+    color: #126caa;
+    text-decoration: none;
+}
+.syn-link.active{
+    color: #126caa;
+    font-weight: 500;
+}
+.syn-link.active::before, .syn-link:hover::before{
+    position: absolute;
+    content:"";
+    color: #126caa;
+    width: 100%;
+    bottom: -13px;px;
+    border-top:2px solid #126caa;        
+}
+
+.small-txt{
+    font-size: 14px;
+}
+.cursor-pointer{
+    cursor: pointer;
+}

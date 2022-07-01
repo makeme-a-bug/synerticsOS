@@ -1,0 +1,665 @@
+{% extends 'delivery/base.html' %}
+{% load static %}
+{% load widget_tweaks %}
+{% block title %} Deliveries {% endblock %}
+
+{% block basecss %}
+<style>
+    .search{
+        max-width: 280px;
+    }
+    .filter-link{
+        padding: 7px;
+        border-radius: 5px;
+        color:#126caa;
+        cursor: pointer;
+    }
+    .filter-link:hover{
+        padding: 7px;
+        border-radius: 5px;
+        color:#126caa;
+        background: #1d68cd36;
+    
+    }
+    .filter-link.active{
+        background: #126caa;
+        color: white;
+    }
+    [id ^= "filter_"]{
+        accent-color: #126caa;
+    }
+</style>
+{% endblock %}
+
+{% block baseBody %}
+<div class="container-fluid p-0 d-flex justify-content-end align-items-start h100-50 flex-column">
+    <div class="w-100 d-flex justify-content-between align-items-end my-auto px-2 flex-wrap">
+        <div class="d-flex flex-fill flex-md-nowrap flex-wrap">
+            <button class="btn btn-danger btn-sm me-2 hide-div mb-2 mb-lg-0 " id="delete" onclick="conform_delete()"><i class="fas fa-trash"></i> Delete </button>
+            <button class="btn btn-primary btn-sm me-2 hide-div mb-2 mb-lg-0 " id="update" onclick="showUpdate();"><i class="fas fa-trash"></i> Update </button>
+            <button class="btn btn-primary btn-sm me-2 hide-div mb-2 mb-lg-0 " id="optimize" data-bs-toggle="modal" data-bs-target="#optimizationModal"><i class="fas fa-bolt"></i> Optimize </button>
+            <!-- <input type="text" class="form-control form-control-sm search" placeholder="search"> -->
+            <div class="input-group search mb-2 mb-lg-0 " style="height: fit-content;width: fit-content;">
+                <div class="form-outline">
+                  <input type="search" id="search" class="form-control form-control-sm" placeholder="Search..." autocomplete="off" oninput="table.replaceData()"/>
+                </div>
+                <button type="button" class="btn btn-sm btn-primary">
+                  <i class="fas fa-search"></i>
+                </button>
+            </div>
+            <button type="button" class="btn btn-sm btn-primary ms-1" data-bs-toggle="modal" data-bs-target="#filterModal">
+                <i class="fas fa-filter"></i>
+            </button>
+        </div>
+
+        <div class="d-flex flex-fill justify-content-end mb-2 mb-lg-0">
+            <button class="btn btn-primary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#deliveryModal">
+                <i class="fas fa-plus"></i> Add delivery
+            </button>
+           <a href="{% url 'excel:import' %}">
+            <button class="btn btn-primary btn-sm">
+                <i class="fas fa-file-import me-2"></i> Import Excel
+            </button>
+           </a> 
+        </div>
+        
+    </div>
+    <div id="myGrid" style="height: calc(100vh - 110px); width:100%;" class="table-sm table-borderless"></div>
+</div>
+
+<div class="modal fade" id="deliveryModal" aria-labelledby="deliveryModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" >
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="deliveryModalLabel">Delivery</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+            <form action="" class="d-flex flex-column" id="deliveryForm">
+                {% csrf_token %}
+                {% for f in fieldsets %}
+                <h6 class="mt-2"> {{f.legend}}</h6>
+                {% if f.id == 'address' %}
+                {% for field in f %}
+                <div class="mb-2">
+                    <label for="" class="text-grey" style="font-size:11.5px">{{field.label}}</label>
+                    {{field|add_class:"form-control form-control-sm"}}
+                    <label for="" class="text-danger" id="error_{{field.name}}"></label>
+
+                </div>
+                {% endfor %}
+                {% elif f.id == 'dimensions' %}
+                    <div class="row mb-2">
+                        {% for field in f %}
+                        <div class="col-4 mb-1">
+                            <label for="" class="text-grey" style="font-size:11.5px">{{field.label}}</label>
+                            {{field|add_class:"form-control form-control-sm"}}
+                            <label for="" class="text-danger" id="error_{{field.name}}"></label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                <div class="row mb-2">
+                    {% for field in f %}
+                    <div class="col-6 mb-1">
+                        <label for="" class="text-grey" style="font-size:11.5px">{{field.label}}</label>
+                        {{field|add_class:"form-control form-control-sm"}}
+                        <label for="" class="text-danger" id="error_{{field.name}}"></label>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                {% endfor %}
+            </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-primary mx-auto" onclick="add_delivery()" id="addDelivery"> <i class="fas fa-plus"></i> Add</button>
+          <button type="button" class="btn btn-primary mx-auto hide-div" onclick="update_delivery()" id="updateDelivery"> Update </button>
+        </div>
+      </div>
+    </div>
+</div>
+
+
+<div class="modal fade" id="optimizationModal" aria-labelledby="optimizationModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" >
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="optimizationModalLabel">Optimization</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+            <form action="" id="optimizationForm">
+                {% csrf_token %}
+                <div class="mb-2">
+                    <label for="" class="text-grey" style="font-size:11.5px">Start time</label>
+                    <input type="datetime-local" name="startTime" id="startTime" class="form-control form-control-sm">
+                    <label class="text-danger" id="error_startTime">  </label>
+                </div>
+                <div class="mb-2">
+                    <label for="" class="text-grey" style="font-size:11.5px">Optimization method</label>
+                    <select class="form-control form-control-sm">
+                        <option value="dispatching">Dispatching</option>
+                    </select>
+                </div>
+                <div class="" id="methodFields">
+                    <div class="mb-2">
+                        <label for="" class="text-grey" style="font-size:11.5px">Select Drivers <span class="text-danger">*</span></label>
+                        <select class="form-select form-select-sm" multiple id="driverIDs" name="driverIDs">
+                        </select>
+                        <label class="text-danger" id="error_driverIDs">  </label>
+                    </div>
+                    <h6 class="mt-2"> Constraints</h6>
+                    <div class="mb-2">
+                        <label for="" class="text-grey" style="font-size:11.5px">Max deliveries per driver</label>
+                        <input type="number" name="max_order_per_driver" id="max_order_per_driver" class="form-control form-control-sm" value="50" min="1" max="50">
+                        <label class="text-danger" id="error_max_order_per_driver">  </label>
+                    </div>
+                    <h6 class="mt-2"> Indexes</h6>
+                    <div class="mb-2 row">
+                        <div class="col-4">
+                            <label for="" class="text-grey" style="font-size:11.5px">distance</label>
+                            <input type="number" name="distance_index" id="" class="form-control form-control-sm" value=0.4>
+                        </div>
+                       <div class="col-4">
+                            <label for="" class="text-grey" style="font-size:11.5px">duration</label>
+                            <input type="number" name="duration_index" id="" class="form-control form-control-sm" value=0.4>
+                        </div>
+                        <div class="col-4">
+                            <label for="" class="text-grey" style="font-size:11.5px">worth</label>
+                            <input type="number" name="worth_index" id="" class="form-control form-control-sm" value=0.2>
+                        </div>
+                    </div>
+                </div>
+
+            </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-primary mx-auto" id="optimizeDelivery" onclick="optimizeDelivery();"> <i class="fas fa-bolt"></i> Optimize</button>
+        </div>
+      </div>
+    </div>
+</div>
+
+
+#filter modal
+<div class="modal fade" id="filterModal" aria-labelledby="filterModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" >
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="filterModalLabel">Filters</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+            <div class="row">
+                <div class="col-4 d-flex flex-column cursor-pointer border-end">
+                    <h6 class="filter-link active"> Status </h6>
+                    <!-- <h6 class="filter-link"> Date time </h6> -->
+                </div>
+                <div class="col-8 d-flex flex-column">
+                    <div class="d-flex justify-content-start align-items-center mb-1">
+                        <div class="me-1" style="width:10px; height:10px; border-radius:100%; background:#cdcdcd"></div><p class="my-0 me-auto" for="filter_status_unassgined"> Unassgined </p> <input type="checkbox" name="" id="filter_status_unassgined" checked value="0">
+                    </div>
+                    <div class="d-flex justify-content-start align-items-center mb-1">
+                        <div class="me-1" style="width:10px; height:10px; border-radius:100%; background:#126caa"></div>  <p class="my-0 me-auto" for="filter_status_assgined">Assgined </p> <input type="checkbox" name="" id="filter_status_assgined" checked value="1">
+                    </div>
+                    <div class="d-flex justify-content-start align-items-center mb-1">
+                        <div class="me-1" style="width:10px; height:10px; border-radius:100%; background:#5d3bc5"></div> <p class="my-0 me-auto" for="filter_status_deployed"> Deployed </p> <input type="checkbox" name="" id="filter_status_deployed" checked value="2">
+                    </div>
+                    <div class="d-flex justify-content-start align-items-center mb-1">
+                        <div class="me-1" style="width:10px; height:10px; border-radius:100%; background:#39831b"></div> <p class="my-0 me-auto" for="filter_status_completed"> Completed </p> <input type="checkbox" name="" id="filter_status_completed" checked value="3">
+                    </div>
+                </div>
+            </div>
+
+
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-primary mx-auto" onclick="applyFilter()" id="addFiter"> Apply</button>
+        </div>
+      </div>
+    </div>
+</div>
+
+
+{% endblock %}
+
+{% block basejs %}
+<script>
+    Notiflix.Loading.pulse();
+
+    $(document).ready(function(){
+        Notiflix.Loading.remove();
+
+    });
+
+    let deliveryModal = new bootstrap.Modal(document.getElementById('deliveryModal'), {})
+    let OptimizationModal = new bootstrap.Modal(document.getElementById('optimizationModal'), {})
+
+    document.getElementById('deliveryModal').addEventListener('hidden.bs.modal', function (event) {
+        document.getElementById('updateDelivery').classList.add('hide-div')
+        document.getElementById('addDelivery').classList.remove('hide-div')
+        document.querySelectorAll('#deliveryForm label[id ^= "error_"]').forEach((e)=>{
+                e.innerHTML = ''
+                document.getElementById("id_"+e.getAttribute('id').replace('error_','')).classList.remove("border","border-danger")
+
+        })
+        document.getElementById('deliveryForm').reset()
+    })
+
+
+    document.getElementById('optimizationModal').addEventListener('shown.bs.modal',()=>{
+        document.querySelectorAll('#optimizationForm label[id ^= "error_"]').forEach((e)=>{
+            e.innerHTML = ''
+            document.getElementById(e.getAttribute('id').replace('error_','')).classList.remove("border","border-danger")
+
+        })
+        $.get("{% url 'delivery:driver-list'  %}").then((res)=>{
+            drivers = ''
+            res.forEach((driver)=>{
+                drivers += `<option value="${driver.id}">${driver.name} ${driver.email}</option>`
+            })
+            document.getElementById('driverIDs').innerHTML = drivers
+        })
+        document.getElementsByName('startTime')[0].value = moment().format('YYYY-MM-DDTHH:mm')
+    })
+
+    const serialize = function(obj) {
+        var str = [];
+        for (var p in obj)
+            if (obj.hasOwnProperty(p)) {
+            str.push(encodeURIComponent(p) + "=" + encodeURIComponent(obj[p]));
+            }
+        return str.join("&");
+    }
+
+    const timeFormatte =  (cell, formatterParams, onRendered) =>{
+
+        if (cell.getValue() > 0){
+            return moment.unix(cell.getValue()).utc().format('DD-MM-YYYY HH:mm');
+        }
+
+        return '_'
+    }
+
+    const numberFormatte =  (cell, formatterParams, onRendered) =>{
+
+        if (cell.getValue() > 0){
+            return cell.getValue();
+        }
+
+        return '_'
+    }
+
+    const dTypeFormatte =  (cell, formatterParams, onRendered) =>{
+        if (cell.getValue()> 0){
+            return '<span class="badge rounded-pill bg-dark" style="font-size:11.5px">Pick up</span>';
+        }
+
+        return '<span class="badge rounded-pill bg-primary" style="font-size:11.5px">Delivery</span>'
+    }
+
+    const statusFormatte =  (cell, formatterParams, onRendered) =>{
+        statuses = {0:"Unassgined",1:"Assigned",2:"Deployed",3:"Completed"}
+        color = {0:"#cdcdcd",1:"#126caa",2:"#5d3bc5",3:"#39831b"}
+        return `<div class="me-2" style="width:10px; height:10px; border-radius:100%; background:${color[cell.getValue()]}"></div> ${statuses[cell.getValue()]}`
+    }
+
+
+    const build_filter=()=>{
+        let checkboxs = document.querySelectorAll('input[id ^= "filter_"]')
+        let filter = {status:''}
+        checkboxs.forEach((e)=>{
+            if (e.checked){
+                filter.status += e.value + ','
+            }
+        })
+        result = ''
+        for(let key in filter){
+            if (filter[key] == ''){
+                delete filter[key]
+            }
+            else{
+                result += `&${key}__in=${filter[key]}`
+            }
+        }
+        return result
+    }
+
+    const applyFilter= ()=>{
+        table.replaceData()
+    }
+
+    const columns = [
+        {formatter:"rowSelection", titleFormatter:"rowSelection", align:"center", headerSort:false, width:50,hozAlign:"center",headerHozAlign:"center"},
+        {title:"id", field:"id", sorter:"number", width:100},
+        {title:"Address", field:"address", sorter:"string", hozAlign:"left", width:350,formatter:"textarea"},
+        {title:"Assigned to", field:"trip.driver.name", sorter:"string", hozAlign:"left",},
+        {title:"Status", field:"status", sorter:"string", hozAlign:"left",formatter:statusFormatte},
+        {title:"Delivery type", field:"order_type", sorter:"string", hozAlign:"left",formatter:dTypeFormatte},
+        {title:"Time From", field:"time_from", sorter:"string", hozAlign:"left",formatter:timeFormatte},
+        {title:"Time To", field:"time_to", sorter:"string", hozAlign:"left",formatter:timeFormatte},
+        {title:"Buffer", field:"buffer", sorter:"number", hozAlign:"right",formatter:numberFormatte},
+        {title:"Weight", field:"weight", sorter:"number", hozAlign:"right",formatter:numberFormatte},
+        {title:"Width", field:"width", sorter:"number", hozAlign:"right",formatter:numberFormatte},
+        {title:"Height", field:"height", sorter:"number", hozAlign:"right",formatter:numberFormatte},
+        {title:"Depth", field:"depth", sorter:"number", hozAlign:"right",formatter:numberFormatte},
+    ];
+
+    var table = new Tabulator("#myGrid", {
+        layout:"fitColumns",
+        ajaxURL:"{% url 'delivery:order-list' %}",
+        progressiveLoad:"load",
+        paginationSize:200,
+        placeholder:"No Data Set",
+        sortMode:"remote",
+        headerSortElement:"<i class='fas fa-arrow-up'></i>",
+        placeholder:`
+            <h6> No Delivery avialble at the moment</h6>
+            <a href="{% url 'excel:import' %}"  class="btn btn-primary btn-sm">
+                
+                    <i class="fas fa-file-import me-2"></i> Import Excel
+            </a>
+            <button class="btn btn-primary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#deliveryModal">
+                <i class="fas fa-plus"></i> Add delivery
+            </button>
+        `,
+        ajaxConfig:{
+            headers: {
+                'Authorization': 'Token {{userToken}}',
+            },
+        },
+        columnDefaults:{
+            vertAlign:"middle"
+        },
+        dataSendParams:{
+        "page":"page",
+        "size":"page_size"
+        },
+        dataReceiveParams:{
+        "data":"results",
+        },
+        rowHeight:40,
+        columns:columns,
+        dataLoader:false,
+        ajaxURLGenerator:function(url, config, params){
+            let param = '?'
+            sort = params.sort
+            if(!!sort){
+                sort.forEach((s)=>{
+                direction = s.dir == "asc" ? '-' : '' 
+                param += 'ordering='+direction+s.field
+                })
+            }
+            delete params['sort']; 
+            return url +param + `&search=${document.getElementById('search').value}&` + serialize(params)+build_filter();
+        },
+    });
+
+
+    table.on("dataLoading", function(data){
+        Notiflix.Block.hourglass(".tabulator-tableholder");
+
+    });
+
+    table.on("dataProcessed",  function(data){
+        Notiflix.Block.remove(".tabulator-tableholder");
+    });
+
+
+    table.on("rowSelectionChanged", function(data, rows){
+        if(rows.length > 0){
+            document.getElementById('delete').classList.remove('hide-div')
+            document.getElementById('optimize').classList.remove('hide-div')
+            if (rows.length > 1){
+                document.getElementById('update').classList.add('hide-div')
+                return
+            }
+            document.getElementById('update').classList.remove('hide-div')
+            return
+
+        }
+        document.getElementById('delete').classList.add('hide-div')
+        document.getElementById('update').classList.add('hide-div')
+        document.getElementById('optimize').classList.add('hide-div')
+
+    });
+
+
+    const add_delivery = () => {
+        document.querySelectorAll('#deliveryForm label[id ^= "error_"]').forEach((e)=>{
+                e.innerHTML = ''
+                document.getElementById("id_"+e.getAttribute('id').replace('error_','')).classList.remove("border","border-danger")
+        })
+        formData = new FormData(document.getElementById('deliveryForm'))
+        formData.set('time_from',!!formData.get('time_from') ? moment(formData.get('time_from')).utc(true).unix() : 0);
+        formData.set('time_to',!!formData.get('time_to') ? moment(formData.get('time_to')).utc(true).unix():0);
+        Notiflix.Block.hourglass('#deliveryModal .modal-content');
+        $.ajax({
+            url:"{% url 'delivery:order-list' %}",
+            type: 'POST',
+            data:formData,
+            cache: false,
+            processData: false,
+            contentType: false,
+            }
+        ).done((res) => {
+            table.addData([res], true)
+            Notiflix.Notify.success(`Delivery added!`);
+            Notiflix.Block.remove('#deliveryModal .modal-content');
+            deliveryModal.hide()
+        }).fail((err) => {
+            for(let key in err.responseJSON) {
+                if (key === 'time_from' || key === 'time_to'){
+                    console.log(err.responseJSON[key])
+                    unix = parseFloat(err.responseJSON[key][0].replace(/\D/g, ""));
+                    date = moment.unix(unix).utc().format('YYYY-MM-DD HH:mm')
+                    helpTxt = err.responseJSON[key][0].replace( ""+unix,date)
+                    document.getElementById("error_"+key).innerHTML = helpTxt
+                    document.getElementById("id_"+key).classList.add("border","border-danger")
+                }
+                else{
+                    document.getElementById("error_"+key).innerHTML = err.responseJSON[key]
+                    document.getElementById("id_"+key).classList.add("border","border-danger")
+                }
+            }
+
+            Notiflix.Block.remove('#deliveryModal .modal-content');
+
+        })
+    }
+
+    const showUpdate = () => {
+
+        id = table.getSelectedData()[0].id
+
+        
+
+        $.get(
+            `{% url 'delivery:order-detail' pk=0 %}`.replace("0",id),
+        ).then((res) => {
+            for(let key in res){
+                try{
+                    if ((key === 'time_from' || key === 'time_to' ) && res[key] != 0){
+                    console.log(res[key])
+                    document.getElementById('id_'+key).value = moment.unix(res[key]).utc().format('YYYY-MM-DDTHH:mm')
+                    }
+                    else{
+                        document.getElementById('id_'+key).value = res[key]
+                    }
+                }
+                catch{
+
+                }
+            }
+            
+            deliveryModal.show()
+            document.getElementById('updateDelivery').classList.remove('hide-div')
+            document.getElementById('addDelivery').classList.add('hide-div')
+
+        }).catch((err) => {
+            
+        })
+    }
+
+
+    const update_delivery = async () => {
+        document.querySelectorAll('#deliveryForm label[id ^= "error_"]').forEach((e)=>{
+                e.innerHTML = ''
+                console.log("id_"+e.getAttribute('id').replace('error_',''))
+                document.getElementById("id_"+e.getAttribute('id').replace('error_','')).classList.remove("border","border-danger")
+
+        })
+        id = table.getSelectedData()[0].id
+        formData = new FormData(document.getElementById('deliveryForm'))
+        formData.set('time_from',!!formData.get('time_from') ? moment(formData.get('time_from')).utc(true).unix() : 0);
+        formData.set('time_to',!!formData.get('time_to') ? moment(formData.get('time_to')).utc(true).unix():0);
+        Notiflix.Block.hourglass('#deliveryModal .modal-content');
+
+        $.ajax({
+            url: `{% url 'delivery:order-detail' pk=0 %}`.replace("0",id),
+            type: 'PUT',
+            data:formData,
+            cache: false,
+            processData: false,
+            contentType: false,
+        }).done((res) => {
+            table.updateData([res])
+            Notiflix.Notify.success(`Delivery updated!`);
+            Notiflix.Block.remove('#deliveryModal .modal-content');
+
+        }).fail((err) => {
+            for(let key in err.responseJSON) {
+                if ((key === 'time_from' || key === 'time_to' ) && res[key] != 0){
+                    unix = parseFloat(err.responseJSON[key].replace(/\D/g, ""));
+                    date = moment.unix(unix).utc().format('YYYY-MM-DDTHH:mm')
+                    helpTxt = err.responseJSON[key].replace( ""+unix,date)
+                    document.getElementById("error_"+key).innerHTML = helpTxt
+                }
+                else{
+                    document.getElementById("error_"+key).innerHTML = err.responseJSON[key]
+                }
+            }
+            Notiflix.Block.remove('#deliveryModal .modal-content');
+        })
+    }
+
+
+    const conform_delete = ()=>{
+        Notiflix.Confirm.show(
+            'Delete Delivery',
+            `Do you want to delete ${table.getSelectedData().length} delivery(ies)?`,
+            'Delete',
+            'Cancel',
+        delete_delivery,
+        () => {
+            // alert('If you say so...');
+        },
+        {
+            okButtonColor: '#fff',
+            okButtonBackground: '#af3834',
+        },
+        );
+    }
+    const delete_delivery = async ()=>{
+        ids = []
+        table.getSelectedData().forEach((delivery)=>{
+            ids.push(delivery.id)
+        })
+        Notiflix.Loading.hourglass()
+        $.ajax({
+            url: `{% url 'delivery:order-bulk-delete' %}`,
+            type: 'POST',
+            data:JSON.stringify({ids:ids}),
+            contentType: 'application/json'
+        }).done((res) => {
+            table.deleteRow(ids)
+            Notiflix.Notify.success(`${ids.length} delivery(ies) deleted!`);
+            Notiflix.Loading.remove()
+        }).fail((err) => {
+            console.log(err)
+            Notiflix.Notify.failure(err.responseJSON[0]);
+            Notiflix.Loading.remove()
+        })
+    }
+
+    validateOptimzationForm = () =>{
+        let valid = true;
+        driverIds = Array.prototype.slice.call(document.querySelectorAll('select[name="driverIDs"] option:checked'),0).map(function(v,i,a) {return v.value;})
+        startTime = document.getElementsByName('startTime')[0].value
+        max_orders = parseInt(document.getElementsByName('max_order_per_driver')[0].value)
+        if (driverIds.length == 0){
+            document.querySelectorAll('select[name="driverIDs"]')[0].classList.add('border','border-danger')
+            document.getElementById('error_driverIDs').innerHTML = 'Please select at least one driver'
+            valid = false
+        }
+        if (!!!startTime){
+            document.getElementById('startTime').classList.add('border','border-danger')
+            document.getElementById('error_startTime').innerHTML = 'Please select a start time'
+            valid = false
+        }
+        if (max_orders < 1 || max_orders > 50){
+            document.getElementsByName('max_order_per_driver')[0].classList.add('border','border-danger')
+            document.getElementById('error_max_order_per_driver').innerHTML = 'Please enter a number greater than 1 and less than 50'
+            valid = false
+        }
+        return valid
+    }
+
+    const optimizeDelivery = () => {
+        ids = []
+        table.getSelectedData().forEach(order => ids.push(order.id))
+        if (!validateOptimzationForm()){
+            return
+        }
+
+        data = {
+                driverIDs:Array.prototype.slice.call(document.querySelectorAll('select[name="driverIDs"] option:checked'),0).map(function(v,i,a) {return v.value;}),
+                orderIDs:ids,
+                indexes:{
+                    distance_index:parseFloat(document.getElementsByName('distance_index')[0].value),
+                    duration_index:parseFloat(document.getElementsByName('duration_index')[0].value),
+                    worth_index:parseFloat(document.getElementsByName('worth_index')[0].value),
+                },
+                constraints:{
+                    max_orders_per_driver:parseInt(document.getElementsByName('max_order_per_driver')[0].value),
+                    start_time:moment.utc(document.getElementsByName('startTime')[0].value).unix()
+                }
+            }
+        Notiflix.Block.hourglass('#optimizationModal .modal-content');
+        $.ajax({
+            method:"POST",
+            url:'{% url "delivery:trip-list" %}',
+            data:JSON.stringify(data),
+            contentType: 'application/json',
+        }).done((res) => {
+            Notiflix.Block.remove('#optimizationModal .modal-content')
+            table.replaceData()
+            OptimizationModal.hide()
+            Notiflix.Report.success(
+                'Optimization Completed!',
+                `${res.unassigned} deliveries could not be optimized!`,
+                'Okay',
+                {messageColor:'#af3834'}
+            );
+        }).fail((err) => {
+            Notiflix.Block.remove('#optimizationModal .modal-content')
+            Notiflix.Report.failure(
+                'Optimization Failed!',
+                `Please try again`,
+                'Okay',
+            );
+        })
+    }
+
+
+
+    const input = document.getElementById("id_address");
+    const options = {
+    fields: ["address_components", "geometry", "icon", "name"],
+    strictBounds: false,
+    };
+    const autocomplete = new google.maps.places.Autocomplete(input, options);
+    
+</script>
+{% endblock %}

@@ -1,0 +1,356 @@
+{% extends 'delivery/base.html' %}
+{% load static %}
+{% load widget_tweaks %}
+
+{% block title %} Drivers {% endblock %}
+
+{% block basecss %}
+<style>
+    .search{
+        max-width: 280px;
+    }
+</style>
+{% endblock %}
+
+{% block baseBody %}
+<div class="container-fluid d-flex p-0 justify-content-start align-items-start h100-50 flex-column">
+    <div class="w-100 d-flex justify-content-between align-items-end my-auto px-2 flex-wrap">
+        <div class="d-flex flex-fill flex-md-nowrap flex-wrap">
+            <button class="btn btn-danger btn-sm me-2 hide-div mb-2 mb-lg-0 " id="delete" onclick="conform_delete();"><i class="fas fa-trash"></i> Delete </button>
+            <button class="btn btn-primary btn-sm me-2 hide-div mb-2 mb-lg-0 " id="update" onclick="showUpdate();"><i class="fas fa-trash"></i> Update </button>
+        </div>
+
+        <div class="d-flex flex-fill justify-content-end mb-2 mb-lg-0">
+            <button class="btn btn-primary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#driverModal">
+                <i class="fas fa-plus"></i> Add driver
+            </button>
+        </div>
+        
+    </div>
+    <div id="myGrid" style="height: calc(100vh - 110px); width:100%;" class="table-sm table-borderless"></div>
+</div>
+
+
+<div class="modal fade" id="driverModal" aria-labelledby="driverModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" >
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="driverModalLabel">Driver</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+            <form action="" class="d-flex flex-column" id="driverForm">
+                {% csrf_token %}
+                {% for f in fieldsets %}
+                <h6 class="mt-2"> {{f.legend}}</h6>
+                {% if f.id == 'address' %}
+                {% for field in f %}
+                <div class="mb-1">
+                    <label for="" class="text-grey" style="font-size:11.5px">{{field.label}}</label>
+                    {{field|add_class:"form-control form-control-sm"}}
+                    <label for="" class="text-danger" id="error_{{field.name}}"></label>
+                </div>
+                {% endfor %}
+                {% elif f.id == 'dimensions' %}
+                    <div class="row mb-2">
+                        {% for field in f %}
+                        <div class="col-4 mb-1">
+                            <label for="" class="text-grey" style="font-size:11.5px">{{field.label}}</label>
+                            {{field|add_class:"form-control form-control-sm"}}
+                            <label for="" class="text-danger" id="error_{{field.name}}"></label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                <div class="row mb-2">
+                    {% for field in f %}
+                    <div class="col-6 mb-1">
+                        <label for="" class="text-grey" style="font-size:11.5px">{{field.label}}</label>
+                        {{field|add_class:"form-control form-control-sm"}}
+                        <label for="" class="text-danger" id="error_{{field.name}}"></label>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                {% endfor %}
+            </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-primary mx-auto" onclick="add_driver()" id="addDriver"> <i class="fas fa-plus"></i> Add</button>
+          <button type="button" class="btn btn-primary mx-auto hide-div" onclick="update_driver()" id="updateDriver"> Update </button>
+        </div>
+      </div>
+    </div>
+</div>
+
+
+{% endblock %}
+
+{% block basejs %}
+<script>
+
+    let deliveryModal = new bootstrap.Modal(document.getElementById('driverModal'), {})
+
+    document.getElementById('driverModal').addEventListener('hidden.bs.modal', function (event) {
+        document.getElementById('updateDriver').classList.add('hide-div')
+        document.getElementById('addDriver').classList.remove('hide-div')
+        document.querySelectorAll('label[id ^= "error_"]').forEach((e)=>{
+            e.innerHTML = ''
+        })
+        document.getElementById("id_"+e.getAttribute('id').replace('error_','')).classList.remove("border","border-danger")
+        document.getElementById('driverForm').reset()
+
+    })
+
+
+    const serialize = function(obj) {
+        var str = [];
+        for (var p in obj)
+            if (obj.hasOwnProperty(p)) {
+            str.push(encodeURIComponent(p) + "=" + encodeURIComponent(obj[p]));
+            }
+        return str.join("&");
+    }
+
+    const numberFormatte =  (cell, formatterParams, onRendered) =>{
+
+        if (cell.getValue() > 0){
+            return cell.getValue();
+        }
+
+        return '_'
+    }
+    const linkFormatter =  (cell, formatterParams, onRendered) =>{
+        return `<a href="${"{% url 'delivery:driver_trips' id=0 %}".replace(0,cell.getValue())}" target="_blank"><i class="fas fa-link"></i></a>`
+    }
+
+    const columns = [
+        {formatter:"rowSelection", titleFormatter:"rowSelection", align:"center", headerSort:false, width:50,hozAlign:"center",headerHozAlign:"center"},
+        {title:"id", field:"id", sorter:"number", width:100},
+        {title:"E-Mail", field:"email", sorter:"string"},
+        {title:"Name", field:"name", sorter:"string", hozAlign:"left"},
+        {title:"Address", field:"address", sorter:"string", hozAlign:"left", width:350,formatter:"textarea"},
+        {title:"Max Weight", field:"max_weight", sorter:"string", hozAlign:"left",formatter:numberFormatte},
+        {title:"Width", field:"width", sorter:"number", hozAlign:"right",formatter:numberFormatte},
+        {title:"Height", field:"height", sorter:"number", hozAlign:"right",formatter:numberFormatte},
+        {title:"Depth", field:"depth", sorter:"number", hozAlign:"right",formatter:numberFormatte},
+        {title:"Link", field:"id", sorter:"number", hozAlign:"center",formatter:linkFormatter},
+    ];
+
+    var table = new Tabulator("#myGrid", {
+        layout:"fitColumns",
+        ajaxURL:"{% url 'delivery:driver-list' %}",
+        progressiveLoad:"scroll",
+        paginationSize:100,
+        placeholder:"No Data Set",
+        sortMode:"remote",
+        dataLoader:false,
+        columnDefaults:{
+            vertAlign:"middle"
+        },
+        placeholder:`
+            <h6> No Driver added at the moment</h6>
+            <button class="btn btn-primary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#driverModal">
+                <i class="fas fa-plus"></i> Add driver
+            </button>
+        `,
+        ajaxConfig:{
+            headers: {
+                'Authorization': 'Token {{userToken}}',
+            },
+        },    
+        dataSendParams:{
+        "page":"page",
+        "size":"page_size"
+        },
+        dataReceiveParams:{
+        "data":"results",
+        },
+        rowHeight:40,
+        columns:columns,
+        ajaxURLGenerator:function(url, config, params){
+            let param = '?'
+            sort = params.sort
+            sort.forEach((s)=>{
+                direction = s.dir == "asc" ? '-' : '' 
+                param += 'ordering='+direction+s.field
+            })
+
+            delete params['sort']; 
+
+
+            return url +param + "&" + serialize(params);
+        },
+
+    });
+
+
+    table.on("dataLoading", function(data){
+        Notiflix.Block.hourglass(".tabulator-tableholder");
+
+    });
+
+    table.on("dataProcessed",  function(data){
+        Notiflix.Block.remove(".tabulator-tableholder");
+    });
+
+
+    table.on("rowSelectionChanged", function(data, rows){
+        if(rows.length > 0){
+            document.getElementById('delete').classList.remove('hide-div')
+            if (rows.length > 1){
+                document.getElementById('update').classList.add('hide-div')
+                return
+            }
+            document.getElementById('update').classList.remove('hide-div')
+            return
+
+        }
+        document.getElementById('delete').classList.add('hide-div')
+        document.getElementById('update').classList.add('hide-div')
+    });
+
+
+    // driver add
+
+
+    const add_driver = () => {
+        formData = new FormData(document.getElementById('driverForm'))
+        document.querySelectorAll('label[id ^= "error_"]').forEach((e)=>{
+            e.innerHTML = ''
+            document.getElementById("id_"+e.getAttribute('id').replace('error_','')).classList.remove("border","border-danger")
+
+        })
+        Notiflix.Block.hourglass('#driverModal .modal-content');
+        $.ajax({
+            url:"{% url 'delivery:driver-list' %}",
+            type: 'POST',
+            data:formData,
+            cache: false,
+            processData: false,
+            contentType: false,
+            }
+        ).done((res) => {
+            table.addData([res], true)
+            Notiflix.Block.remove('#driverModal .modal-content');
+            Notiflix.Notify.success(`Driver added!`);
+
+
+        }).fail((err) => {
+            for(let key in err.responseJSON) {
+                document.getElementById("error_"+key).innerHTML = err.responseJSON[key]
+                document.getElementById("id_"+key).classList.add("border","border-danger")
+            }
+            Notiflix.Block.remove('#driverModal .modal-content');
+
+        })
+    }
+
+
+    //  driver update
+    const showUpdate = () => {
+
+        id = table.getSelectedData()[0].id
+
+        $.get(
+            `{% url 'delivery:driver-detail' pk=0 %}`.replace("0",id),
+        ).then((res) => {
+                for(let key in res){
+                    if (!!document.getElementById('id_'+key)){
+                        document.getElementById('id_'+key).value = res[key]
+                    }
+                }
+
+            
+            deliveryModal.show()
+            document.getElementById('updateDriver').classList.remove('hide-div')
+            document.getElementById('addDriver').classList.add('hide-div')
+
+        }).catch((err) => {
+            
+        })
+    }
+
+    const update_driver = () => {
+        id = table.getSelectedData()[0].id
+        formData = new FormData(document.getElementById('driverForm'))
+        document.querySelectorAll('label[id ^= "error_"]').forEach((e)=>{
+            e.innerHTML = ''
+            document.getElementById("id_"+e.getAttribute('id').replace('error_','')).classList.remove("border","border-danger")
+
+        })
+        Notiflix.Block.hourglass('#driverModal .modal-content');
+
+        $.ajax({
+            url: `{% url 'delivery:driver-detail' pk=0 %}`.replace("0",id),
+            type: 'PUT',
+            data:formData,
+            cache: false,
+            processData: false,
+            contentType: false,
+        }).done((res) => {
+            table.updateData([res])
+            Notiflix.Notify.success(`Driver updated!`);
+            Notiflix.Block.remove('#driverModal .modal-content');
+
+        }).fail((err) => {
+            for(let key in err.responseJSON) {
+                document.getElementById("error_"+key).innerHTML = err.responseJSON[key]
+                document.getElementById("id_"+key).classList.add("border","border-danger")
+            }
+            Notiflix.Block.remove('#driverModal .modal-content');
+
+        })
+    }
+
+    // driver delete
+
+    const conform_delete = ()=>{
+        Notiflix.Confirm.show(
+            'Delete Delivery',
+            `Do you want to delete ${table.getSelectedData().length} driver(s)?`,
+            'Delete',
+            'Cancel',
+        delete_driver,
+        () => {
+            // alert('If you say so...');
+        },
+        {
+            okButtonColor: '#fff',
+            okButtonBackground: '#af3834',
+        },
+        );
+    }
+
+    const delete_driver = ()=>{
+        ids = []
+        table.getSelectedData().forEach((driver)=>{
+            ids.push(driver.id)
+        })
+        Notiflix.Loading.hourglass();
+        $.ajax({
+            url: `{% url 'delivery:driver-bulk-delete' %}`,
+            type: 'POST',
+            data:JSON.stringify({ids:ids}),
+            contentType: 'application/json'
+        }).done((res) => {
+            table.deleteRow(ids)
+            Notiflix.Notify.success(`${ids.length} driver(s) deleted!`);
+            Notiflix.Loading.remove()
+        }).fail((err) => {
+            Notiflix.Loading.remove()
+            
+        })
+    }
+
+
+    // google auto complete
+    const input = document.getElementById("id_address");
+    const options = {
+    fields: ["address_components", "geometry", "icon", "name"],
+    strictBounds: false,
+    };
+    const autocomplete = new google.maps.places.Autocomplete(input, options);
+    
+</script>
+{% endblock %}

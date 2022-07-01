@@ -1,0 +1,80 @@
+{% extends 'bases/base.html' %}
+{% load static %}
+
+{% block title %} Excel Import {% endblock %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="https://unpkg.com/dropzone@5/dist/min/dropzone.min.css" type="text/css" />
+{% endblock %}
+
+{% block scripts %}
+<script src="https://unpkg.com/dropzone@5/dist/min/dropzone.min.js"></script>
+{% endblock %}
+
+
+{% block css %}
+<style>
+    .dropzoneDiv{
+        min-width:250px;
+        height:100%;
+        width:100%;
+        max-width: 500px;
+        min-height:150px;
+        max-height:350px;
+        cursor:pointer;
+        border: 2px dashed #126caa;
+    }
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="container d-flex h100-70 justify-content-center align-items-center flex-column">
+    <h2 class="text-center text-syn mb-4" >
+        Excel Import
+    </h2>
+    <form action="{% url 'excel:import'%}" method="post"
+      class="dropzone dropzoneDiv rounded"
+      id="my-dropzone">
+      {% csrf_token %}
+      <div class="dz-default dz-message"><h4  class="text-grey"> Drop here to upload </h4></div>
+    </form>
+
+    <a href="#" class="link mt-3 link-grey">
+        Download .xlsx template file
+    </a>
+
+    <button class="btn btn-primary mt-3" onclick="submitform()" > Next </button>
+    
+</div>
+{% endblock %}
+
+{% block js %}
+<script>
+
+
+    let myDropzone;
+    Dropzone.options.myDropzone = {
+        maxFiles : 1,
+        acceptedFiles:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel , .csv',
+        autoProcessQueue:false,
+        addRemoveLinks:true,
+        init: function() {
+               myDropzone = this;
+               this.on('success',(file, response)=>{
+                 window.location.href = "{% url 'excel:fieldMapping' %}"
+               })
+        }
+    }
+
+    const submitform = ()=>{
+        myDropzone.processQueue()
+    }
+
+
+   
+
+    
+    
+
+</script>
+{% endblock %}

@@ -1,0 +1,137 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %} {% endblock %}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.css"/>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+    <link rel="stylesheet" href="{% static 'base.css'%}">
+    {% block stylesheets %}
+    {% endblock %}
+
+</head>
+
+
+{% block css %}
+{% endblock %}
+
+<body>
+    <div class="container-fluid d-flex justify-content-center align-items-center h-50p border-bottom">
+        <div class="d-flex me-auto" style="width: 200px;">
+            <img src="https://synertics.io/staticfiles/img/logo-vector.svg" alt="synertics_logo" class="logo">
+        </div>
+        <div class="d-flex mx-auto">
+            <a href="{% url 'delivery:trips' %}" class="mx-2 text-center syn-link {% if trips %} active {% endif %}"> <span class="mx-auto">Trips</span> </a>
+            <a href="{% url 'delivery:deliveries' %}" class="mx-2 text-center syn-link {% if deliveries %} active {% endif %}"> <span class="mx-auto">Deliveries</span>  </a>
+            <a href="{% url 'delivery:drivers' %}" class="mx-2 text-center syn-link {% if drivers %} active {% endif %}"> <span class="mx-auto">Drivers</span> </a>
+        </div>
+        <div class="d-flex ms-auto justify-content-end" style="width: 200px;">
+            <a href="{% url 'excel:import' %}" class="syn-link mx-1" title="Excel import"><i class="fas fa-file-import me-2"></i></a> 
+            <a href="{% url 'account:account' %}" class="syn-link mx-1" title="settings"> <i class="fas fa-cog"></i> </a>
+            <a href="{% url 'account:logout' %" class="syn-link mx-1" title="logout"> <i class="fas fa-sign-out-alt me-2"></i></a>
+            {% if deliveries %}
+            <a onclick="toggleFullScreen()" class="syn-link mx-1" title="Full screen"><i class="fas fa-expand-alt" ></i></a>
+            {% endif %}
+        </div>
+    </div>
+    {% block body %}
+    {% endblock %}
+</body>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js" integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
+<script src="https://kit.fontawesome.com/f690328fff.js" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/notiflix@3.2.5/dist/notiflix-aio-3.2.5.min.js"></script>
+
+{% block scripts %}
+{% endblock %}
+
+{% block js %}
+{% endblock %}
+<script>
+    function getCookie(name) {
+    var cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        var cookies = document.cookie.split(';');
+        for (var i = 0; i < cookies.length; i++) {
+            var cookie = jQuery.trim(cookies[i]);
+            // Does this cookie string begin with the name we want?
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+var csrftoken = getCookie('csrftoken');
+
+function csrfSafeMethod(method) {
+    // these HTTP methods do not require CSRF protection
+    return (/^(GET|HEAD|OPTIONS|TRACE)$/.test(method));
+}
+$.ajaxSetup({
+    beforeSend: function(xhr, settings) {
+        if (!csrfSafeMethod(settings.type) && !this.crossDomain) {
+            xhr.setRequestHeader("X-CSRFToken", csrftoken);
+        }
+    }
+});
+
+</script>
+<script>
+    function toggleFullScreen() {
+        if (!document.fullscreenElement &&    // alternative standard method
+        !document.mozFullScreenElement && !document.webkitFullscreenElement) {  // current working methods
+            if (document.documentElement.requestFullscreen) {
+            document.documentElement.requestFullscreen();
+            } else if (document.documentElement.mozRequestFullScreen) {
+            document.documentElement.mozRequestFullScreen();
+            } else if (document.documentElement.webkitRequestFullscreen) {
+            document.documentElement.webkitRequestFullscreen(Element.ALLOW_KEYBOARD_INPUT);
+            }
+        } else {
+            if (document.cancelFullScreen) {
+                document.cancelFullScreen();
+            } else if (document.mozCancelFullScreen) {
+                document.mozCancelFullScreen();
+            } else if (document.webkitCancelFullScreen) {
+            document.webkitCancelFullScreen();
+            }
+        }
+    }
+
+    Notiflix.Confirm.init({
+        titleColor: '#126caa',
+        okButtonColor: '#fff',
+        okButtonBackground: '#126caa',
+        borderRadius:"5px"
+    })
+
+    Notiflix.Notify.init({
+        borderRadius:"5px",
+        position:"left-bottom"
+    })
+
+    Notiflix.Loading.init({
+        backgroundColor:"#ffffff50",
+        svgColor:"#126caa"
+    })
+
+    Notiflix.Block.init({
+        svgColor:"#126caa"
+    })
+
+
+    Notiflix.Loading.pulse();
+    $(document).ready(function(){
+        Notiflix.Loading.remove();
+
+    });
+</script>
+</html>

@@ -1,0 +1,239 @@
+{% extends 'bases/base.html' %}
+{% load static %}
+
+{% block title %} Excel Import {% endblock %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/ag-grid/Docs-27.2.1-20220420/styles/ag-grid.min.css" integrity="sha512-2euLJS00YpxIOHKIinN1Nb+MtmeMLxiDYMz7R0no2bt1/BzdMXaNHByElWmLkqrWMrjOt9oNEFzoyHSzRJiIWw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ag-grid/Docs-27.2.1-20220420/ag-grid-community.min.js" integrity="sha512-qx1v32Xx2Pd/tkbz70aorurAF6/214hjy+otgy+GhoLWMnVt02lwmRSGMtdqYb6TuqtRppD9LoQySFWvZjHoFw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+{% endblock %}
+
+{% block css %}
+<style>
+    .demo-table{
+        max-width: 100%;
+        max-height: calc(100vh - 300px);
+    }
+    .table{
+        border-collapse: separate; /* Don't collapse */
+        border-spacing: 0;
+    }
+    .table th{
+        min-width: 100px;
+    }
+    .table thead{
+        position:sticky;
+        top: 0 ;
+        background: white;
+        height:50px;
+    }
+    .ag-theme-alpine{
+        font-family: 'poppins';
+    }
+    .ag-theme-alpine input[class^=ag-][type=text]{
+        color: black !important;
+    }
+    .tooltip-inner{
+        min-width: 250px;
+    }
+    .tooltip .bs-tooltip-bottom , .tooltip-inner {
+        background-color: white !important;
+        border-color: white !important;
+        color: #000 !important;
+    }
+    .bs-tooltip-bottom .tooltip-arrow::before {
+        border-bottom-color: #fff;
+    }
+
+
+
+
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="container d-flex justify-content-center align-items-center h100-70 flex-column">
+    <h3 class="text-syn mb-4">Deliveries Import</h3>
+    <div id="myGrid" style="height: calc(100vh - 300px); width:100%;" class="ag-theme-alpine"></div>
+    <div>
+        <a href="{% url 'excel:fieldMapping' %}"><button class="btn btn-secondary mt-3" > Back </button></a>
+        <button class="btn btn-primary mt-3" form="import" > import </button>
+        <form action="{% url 'excel:addDeliveries' %}" method="post" id="import" hidden>
+            {% csrf_token %}
+        </form>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block js %}
+<script >
+
+    window.CSRF_TOKEN='{{ csrf_token }}';
+
+    class DatePicker {
+    // gets called once before the renderer is used
+        init(params) {
+            // create the cell
+            this.eInput = document.createElement('input');
+            this.eInput.value = params.value;
+            this.eInput.classList.add('ag-input');
+            this.eInput.style.height = '100%';
+
+            // https://jqueryui.com/datepicker/
+            $(this.eInput).datepicker({
+            dateFormat: 'dd/mm/yy',
+            onSelect: () => {
+                this.eInput.focus();
+            },
+            });
+        }
+
+        // gets called once when grid ready to insert the element
+        getGui() {
+            return this.eInput;
+        }
+
+        // focus and select can be done after the gui is attached
+        afterGuiAttached() {
+            this.eInput.focus();
+            this.eInput.select();
+        }
+
+        // returns the new value after editing
+        getValue() {
+            return this.eInput.value;
+        }
+
+        // any cleanup we need to be done here
+        destroy() {
+            // but this example is simple, no cleanup, we could
+            // even leave this method out as it's optional
+        }
+
+        // if true, then this editor will appear in a popup
+        isPopup() {
+            // and we could leave this method out also, false is the default
+            return false;
+        }
+    }
+
+    const postiveValue = (params)=>{
+        error = JSON.parse(params.node.data.error)
+        if(params.colDef.field in error){
+            return ['bg-danger text-white']
+        }
+        else{
+            return []
+        }
+    }
+
+    var gridOptions = {
+    columnDefs: [
+        { headerName: '', field: 'error' , width: 100,wrapText: true,autoHeight: true,editable: false,cellClass:"",
+            headerCheckboxSelection: true,
+            headerCheckboxSelectionFilteredOnly: true,
+            checkboxSelection: true,
+            cellRenderer: (params)=>{
+                error = JSON.parse(params.node.data.error)
+                if(Object.keys(error).length <= 0){
+                    return '<h6 class="w-100 text-center my-auto text-success" ><i class="fas fa-check-circle"></i></h6>';
+                }
+
+                errorText = ``
+                for(let key in error){
+                    errorText += `<p class="m-0 text-nowrap" style="font-size:11px!important;"> ${error[key]} </p>`
+                }
+                return `<h6 class="w-100 text-center my-auto text-danger" data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true" tabindex="0" title='${errorText}'><i class="fas fa-exclamation-circle"></i></h6>`;
+            },
+        },
+        { headerName: 'Address', field: 'address' ,minWidth: 300,wrapText: true,autoHeight: true ,cellClass: function(params) {
+            error = JSON.parse(params.node.data.error)
+            if('address' in error){
+                return ['bg-danger text-white']
+            }
+            else{
+                return []
+            }
+        },
+        },
+        { headerName: 'Latitude', field: 'latitude', },
+        { headerName: 'Longitude', field: 'longitude' ,},
+        { headerName: 'Time From', field: 'time_from' ,cellClass: function(params) {
+            error = JSON.parse(params.node.data.error)
+            if('time_from' in error){
+                return ['bg-danger text-white']
+            }
+            else{
+                return []
+            }
+        },
+        },
+        { headerName: 'Time To', field: 'time_to' ,cellClass: function(params) {
+            error = JSON.parse(params.node.data.error)
+            if('time_to' in error){
+                return ['bg-danger text-white']
+            }
+            else{
+                return []
+            }
+        },
+        },
+        { headerName: 'Buffer', field: 'buffer' , width: 100,cellClass: postiveValue,},
+        { headerName: 'Height', field: 'height' , width: 100,cellClass: postiveValue,},
+        { headerName: 'Width', field: 'width' , width: 100,cellClass: postiveValue,},
+        { headerName: 'Depth', field: 'depth' , width: 100,cellClass: postiveValue,},
+        { headerName: 'Weight', field: 'weight' , width: 100,cellClass: postiveValue,},
+        { headerName: 'Order Type', field: 'order_type' , width: 150,cellClass: postiveValue,
+        }
+    ],
+    defaultColDef: {
+        editable: params => {
+            return params.node.data.error !== '{}'
+        }
+    },
+    onViewportChanged: function(){
+        
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        tooltip =  new bootstrap.Tooltip(tooltipTriggerEl)
+        return tooltip
+        })
+        
+    },
+    suppressRowClickSelection: true,
+    rowSelection: 'multiple',
+    getRowId: (params) => {
+        return params.data.ID;
+    },
+    onCellValueChanged: function(data) {
+        $.ajax({
+            url: "{% url 'excel:update' %}",
+            type: "POST",
+            data: {
+                id: data.data.ID,
+                field: data.colDef.field,
+                value: data.newValue,
+                'csrfmiddlewaretoken': window.CSRF_TOKEN
+            },
+            success: function(res) {
+                res = JSON.parse(res)
+                data.node.setData(res[0])
+            }
+        })
+    },
+    rowData: {{ data | safe }}
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+        var eGridDiv = document.querySelector('#myGrid');
+        new agGrid.Grid(eGridDiv, gridOptions);
+    }); 
+   
+    
+    
+</script>
+{% endblock %}

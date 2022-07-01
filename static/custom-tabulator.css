@@ -1,0 +1,73 @@
+.tabulator{
+    font-size:12px;
+}
+.tabulator .tabulator-footer .tabulator-page.active {
+    border-color: #126caa;
+    background-color: #126caa;
+}
+.tabulator .tabulator-footer .tabulator-page:not(.disabled):hover {
+    border-color: #126caa;
+    background: #e9ecef;
+    color: #126caa;
+}
+.tabulator .tabulator-footer {
+    border-top: 1px solid #dee2e6;
+    background-color: #fff
+}
+.tabulator.table-bordered {
+    border: 1px solid #fff;
+}
+::-webkit-scrollbar {
+height: 8px;
+width: 0px;
+border: 1px solid #fff;
+}
+
+::-webkit-scrollbar-track {
+border-radius: 0;
+background: #eeeeee;
+}
+
+::-webkit-scrollbar-thumb {
+border-radius: 0;
+background: #b0b0b0;
+}
+.tabulator .tabulator-header .tabulator-col{
+    background-color:#126caa;
+    color: white;
+}
+.tabulator .tabulator-header .tabulator-col.tabulator-sortable:hover {
+    background-color:#116196;
+    color: white;
+}
+.tabulator .tabulator-header{
+    font-weight: 500;
+    border-radius: 5px;
+}
+.tabulator-row.tabulator-selected,.tabulator-row.tabulator-selected:hover{
+    background-color:#d9d8d8
+}
+.tabulator .tabulator-header .tabulator-col::before{
+    position: absolute;
+    right: 0;
+    content: "";
+    height: 60%;
+    border-right:2px solid #fff;
+    margin-top:2px;
+}
+
+
+.tabulator .tabulator-header .tabulator-col.tabulator-sortable[aria-sort=ascending] .tabulator-col-content .tabulator-col-sorter i{
+    color: #fff;
+}
+
+.tabulator .tabulator-header .tabulator-col.tabulator-sortable[aria-sort=descending] .tabulator-col-content .tabulator-col-sorter i{
+    color: #fff;
+    transform: scaleY(-1);
+}
+.tabulator-row.tabulator-row-even {
+    background-color: #f9f9f9;
+}
+.tabulator .tabulator-tableholder .tabulator-table{
+    color: rgb(29, 29, 29)
+}

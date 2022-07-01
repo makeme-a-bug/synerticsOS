@@ -1,0 +1,177 @@
+{% extends 'bases/base.html' %}
+{% load static %}
+
+{% block title %} Excel Import {% endblock %}
+
+{% block stylesheets %}
+{% endblock %}
+
+{% block scripts %}
+{% endblock %}
+
+{% block css %}
+<style>
+    .demo-table{
+        max-width: 100%;
+    }
+    th{
+        min-width: 200px;
+    }
+    table thead{
+        position:sticky;
+        top: 0 ;
+        background: white;
+        height:50px;
+    }
+
+    
+</style>
+{% endblock %}
+
+{% block body %}
+
+<div class="container d-flex justify-content-center align-items-center h100-70 flex-column">
+    <h3 class="text-syn mb-4">Define delivery fields</h3>
+    <div class="w-100 d-flex justify-content-end align-items-center flex-nowrap mb-2">
+        <label for="" class="me-2"> Geocode provided </label>
+        <input type="checkbox" name="geocoded1" checked>
+    </div>
+    <div class="table-responsive demo-table w-100 rounded border">
+        <form action="{% url 'excel:fieldMapping' %}" id="columns" method="POST">
+           
+            {% csrf_token %}
+            <input type="checkbox" hidden name="geocoded" value="True" checked>
+            <table class="table table-striped">
+                <thead class="shadow">
+                    <tr>
+                        {% for col in columns %}
+                        <th scope="col"><select name="{{col}}" id="" class="form-select w-100" style="min-width: 200px;" >
+                            <option value="none"></option>
+                            <option value="address">Address</option>
+                            <option value="lat">Latitude</option>
+                            <option value="lon">longitude</option>
+                            <option value="timeFrom">Time from</option>
+                            <option value="timeTo">Time to</option>
+                            <option value="buffer">Buffer</option>
+                            <option value="height">height</option>
+                            <option value="width">width</option>
+                            <option value="depth">depth</option>
+                            <option value="weight">weight</option>
+                            <option value="orderType">Order type</option>
+                        </select></th>
+                        {% endfor %}
+                    </tr>
+                    <tr>
+                        {% for col in columns %}
+                        <th scope="col"> <h6 class="fw-bold">{{col}}</h6> </th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for d in data %}
+                    <tr>
+                        {% for key,value in d.items %}
+                        <td > <p style="font-size: 14px;">{{value}}</p></td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+    
+            </table>
+        </form>
+    </div>
+
+    <div>
+        <a href="{% url 'excel:import' %}"><button class="btn btn-secondary mt-3" > Back </button></a>
+        <button class="btn btn-primary mt-3" form="columns" > Next </button>
+    </div>
+
+</div>
+
+
+{% endblock %}
+
+{% block js %}
+<script>
+
+    function noSameValue(event) {
+        
+        document.querySelectorAll('select').forEach((e)=>{
+            if (e.getAttribute('name') != this.getAttribute('name')){
+                if (e.value === this.value){
+                    e.value = 'none'
+                }
+            }
+        })
+    }
+
+    const checkLatLon = ()=>{
+        valid = true
+        let lat = false
+        let lon = false
+        if (document.querySelector('[name="geocoded1"]').checked){
+            document.querySelectorAll('select').forEach((e)=>{
+                if (e.value === 'lat'){
+                    lat = true
+                }
+                if (e.value === 'lon'){
+                    lon = true
+                }
+
+            })
+
+            if (!lat || !lon){
+                valid = false
+            }
+
+
+        }
+
+        return valid
+        
+    }
+
+    const checkAddressField = ()=>{
+        let valid = false
+       
+        document.querySelectorAll('select').forEach((e)=>{
+            if (e.value === 'address'){
+                valid = true
+            }
+            
+
+        })
+        return valid
+
+    }
+
+    document.querySelectorAll('select').forEach((e)=>{
+        e.addEventListener('change',noSameValue)
+    })
+
+
+    document.querySelector('[name="geocoded1"]').addEventListener('change',function (event){
+        document.querySelector('[name="geocoded"]').checked = this.checked
+        })
+
+    document.getElementById('columns').addEventListener('submit',function (event){
+        event.preventDefault()
+        console.log(checkAddressField())
+        if (checkAddressField()){
+
+            if(checkLatLon()){
+                this.submit()
+            }
+            else{
+                alert("please provide latitude and longitude") 
+            }
+        }
+        else{
+            alert("please provide a address line")
+        }
+    })
+
+
+
+</script>
+{% endblock %}
