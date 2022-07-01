@@ -8,4 +8,5 @@ urlpatterns = [
     path("fieldMapping/",vw.fieldMapping , name="fieldMapping"),
     path("addOrders/",vw.addDeliveries , name="addDeliveries"),
     path("update/",vw.correctData , name="update"),
+    path("downloadExample/",vw.download_example , name="download_example"),
 ]

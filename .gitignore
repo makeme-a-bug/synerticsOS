@@ -16,3 +16,4 @@ cache
 *.DS_Store
 *.log
 *.sqlite3
+!Demo Deliveries.xlsx

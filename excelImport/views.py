@@ -2,6 +2,8 @@ import time
 from django.http import JsonResponse
 from django.shortcuts import render , redirect
 from django.urls import reverse
+from django.http import HttpResponse, Http404
+from django.conf import settings
 
 from .models import ExcelFile
 from utils.generator import read_file , timeCorrection , positiveValue,geocoder , NanoID
@@ -14,6 +16,8 @@ from geopy.geocoders import Nominatim
 import dateutil.parser as parser
 import json
 import datetime
+import os
+
 
 geolocator = Nominatim(timeout=10, user_agent = "myGeolocator")
 
@@ -159,3 +163,12 @@ def correctData(request):
         df.to_csv('temp/orders.csv',index=False)
         return JsonResponse(df.loc[df['ID'] == int(id) , :].to_json(orient='records'),status=200 , safe=False)
 
+
+def download_example(request):
+    file_path = os.path.join(settings.BASE_DIR, 'Demo Deliveries.xlsx')
+    if os.path.exists(file_path):
+        with open(file_path, 'rb') as fh:
+            response = HttpResponse(fh.read(), content_type="application/vnd.ms-excel")
+            response['Content-Disposition'] = 'inline; filename=' + os.path.basename(file_path)
+            return response
+    raise Http404
