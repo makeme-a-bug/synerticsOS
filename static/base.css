@@ -117,3 +117,6 @@ label[id ^= "error_"]{
 .cursor-pointer{
     cursor: pointer;
 }
+.hide-div{
+    display: none;
+}

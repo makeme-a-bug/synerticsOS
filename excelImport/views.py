@@ -17,7 +17,7 @@ import dateutil.parser as parser
 import json
 import datetime
 import os
-
+import pytz
 
 geolocator = Nominatim(timeout=10, user_agent = "myGeolocator")
 
@@ -113,8 +113,8 @@ def addDeliveries(request):
         if not df.loc[df['errorLen'] > 0,'error'].empty:
             return render(request, 'excelImport/orders.html',{'data':pd.read_csv('temp/orders.csv').to_json(orient='records'), 'error':'There are still some invalid fields please correct them'})
 
-        df['time_from'] = df['time_from'].apply(lambda x: parser.parse(x).timestamp() if not pd.isnull(x) else 0)
-        df['time_to'] = df['time_to'].apply(lambda x: parser.parse(x).timestamp() if not pd.isnull(x) else 0)
+        df['time_from'] = df['time_from'].apply(lambda x: parser.parse(x).replace(tzinfo=pytz.utc).timestamp() if not pd.isnull(x) else 0)
+        df['time_to'] = df['time_to'].apply(lambda x: parser.parse(x).replace(tzinfo=pytz.utc).timestamp() if not pd.isnull(x) else 0)
         df = df[['time_from','time_to','address','latitude','longitude','buffer','weight','depth','height','width','order_type']]
         for _ , order in df.iterrows():
             order = Order.objects.create(user=request.user,**order)

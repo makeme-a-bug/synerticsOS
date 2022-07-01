@@ -60,9 +60,9 @@ python -m pip install -r requirements.txt
 to install all the dependences 
 
 and make sure you have the following API keys available.
-1. Google (for geocoding)
-2. Mapbox (for map visualization)
-3. Synertics_api [synertics.io](synertics.io)
+1. Synertics_api [https://synertics.io](synertics.io)
+2. Google (for geocoding and autocomplete)
+3. Mapbox (for map visualization)
 
 add these api keys in the example_settings.py file inside synos folder. 
 

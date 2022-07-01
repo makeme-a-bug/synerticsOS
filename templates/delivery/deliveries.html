@@ -131,47 +131,17 @@
         <div class="modal-body">
             <form action="" id="optimizationForm">
                 {% csrf_token %}
-                <div class="mb-2">
-                    <label for="" class="text-grey" style="font-size:11.5px">Start time</label>
-                    <input type="datetime-local" name="startTime" id="startTime" class="form-control form-control-sm">
-                    <label class="text-danger" id="error_startTime">  </label>
-                </div>
+                
                 <div class="mb-2">
                     <label for="" class="text-grey" style="font-size:11.5px">Optimization method</label>
-                    <select class="form-control form-control-sm">
-                        <option value="dispatching">Dispatching</option>
+                    <select class="form-control form-control-sm" id="method" name="method">
+                        <option value="0">Dispatching</option>
+                        <option value="1">Disposition</option>
                     </select>
                 </div>
-                <div class="" id="methodFields">
-                    <div class="mb-2">
-                        <label for="" class="text-grey" style="font-size:11.5px">Select Drivers <span class="text-danger">*</span></label>
-                        <select class="form-select form-select-sm" multiple id="driverIDs" name="driverIDs">
-                        </select>
-                        <label class="text-danger" id="error_driverIDs">  </label>
-                    </div>
-                    <h6 class="mt-2"> Constraints</h6>
-                    <div class="mb-2">
-                        <label for="" class="text-grey" style="font-size:11.5px">Max deliveries per driver</label>
-                        <input type="number" name="max_order_per_driver" id="max_order_per_driver" class="form-control form-control-sm" value="50" min="1" max="50">
-                        <label class="text-danger" id="error_max_order_per_driver">  </label>
-                    </div>
-                    <h6 class="mt-2"> Indexes</h6>
-                    <div class="mb-2 row">
-                        <div class="col-4">
-                            <label for="" class="text-grey" style="font-size:11.5px">distance</label>
-                            <input type="number" name="distance_index" id="" class="form-control form-control-sm" value=0.4>
-                        </div>
-                       <div class="col-4">
-                            <label for="" class="text-grey" style="font-size:11.5px">duration</label>
-                            <input type="number" name="duration_index" id="" class="form-control form-control-sm" value=0.4>
-                        </div>
-                        <div class="col-4">
-                            <label for="" class="text-grey" style="font-size:11.5px">worth</label>
-                            <input type="number" name="worth_index" id="" class="form-control form-control-sm" value=0.2>
-                        </div>
-                    </div>
+               <div class="" id="MethodFields">
+                    
                 </div>
-
             </form>
         </div>
         <div class="modal-footer">
@@ -247,13 +217,7 @@
         document.getElementById('deliveryForm').reset()
     })
 
-
-    document.getElementById('optimizationModal').addEventListener('shown.bs.modal',()=>{
-        document.querySelectorAll('#optimizationForm label[id ^= "error_"]').forEach((e)=>{
-            e.innerHTML = ''
-            document.getElementById(e.getAttribute('id').replace('error_','')).classList.remove("border","border-danger")
-
-        })
+    const get_drivers = ()=>{
         $.get("{% url 'delivery:driver-list'  %}").then((res)=>{
             drivers = ''
             res.forEach((driver)=>{
@@ -261,6 +225,43 @@
             })
             document.getElementById('driverIDs').innerHTML = drivers
         })
+        
+
+    }
+
+    document.getElementById('method').addEventListener('change', (e)=>{
+        if (document.getElementById('method').value == 0){
+            document.getElementById('MethodFields').innerHTML = dispatchingForm
+            get_drivers()
+        }
+        else{
+            document.getElementById('MethodFields').innerHTML = dispositionForm
+            addGoogleAutoComplete('startAddress')
+            document.getElementsByName('endTime')[0].value = moment().add(7,'h').format('YYYY-MM-DDTHH:mm')
+
+        }
+        document.getElementsByName('startTime')[0].value = moment().format('YYYY-MM-DDTHH:mm')
+    })
+
+    document.getElementById('optimizationModal').addEventListener('shown.bs.modal',()=>{
+        document.querySelectorAll('#optimizationForm label[id ^= "error_"]').forEach((e)=>{
+            e.innerHTML = ''
+            document.getElementById(e.getAttribute('id').replace('error_','')).classList.remove("border","border-danger")
+
+        })
+
+        if (document.getElementById('method').value == 0){
+            document.getElementById('MethodFields').innerHTML = dispatchingForm
+            get_drivers()
+        }
+        else{
+            document.getElementById('MethodFields').innerHTML = dispositionForm
+            addGoogleAutoComplete('startAddress')
+            document.getElementsByName('endTime')[0].value = moment().add(7,'h').format('YYYY-MM-DDTHH:mm')
+
+        }
+        
+        
         document.getElementsByName('startTime')[0].value = moment().format('YYYY-MM-DDTHH:mm')
     })
 
@@ -583,7 +584,7 @@
         })
     }
 
-    validateOptimzationForm = () =>{
+    validateDisptachingOptimzationForm = () =>{
         let valid = true;
         driverIds = Array.prototype.slice.call(document.querySelectorAll('select[name="driverIDs"] option:checked'),0).map(function(v,i,a) {return v.value;})
         startTime = document.getElementsByName('startTime')[0].value
@@ -606,30 +607,60 @@
         return valid
     }
 
-    const optimizeDelivery = () => {
-        ids = []
-        table.getSelectedData().forEach(order => ids.push(order.id))
-        if (!validateOptimzationForm()){
-            return
+    validateDispositionOptimzationForm = () =>{
+        let valid = true;
+        startTime = document.getElementsByName('startTime')[0].value
+        endTime = document.getElementsByName('endTime')[0].value
+        max_weight = parseFloat(document.getElementsByName('max_weight_per_driver')[0].value)
+        height = document.getElementById('dis_height').value
+        width = document.getElementById('dis_width').value
+        depth = document.getElementById('dis_depth').value
+        startAddress = document.getElementById('startAddress').value
+        if (!!!startAddress){
+            document.getElementById('startAddress').classList.add('border','border-danger')
+            document.getElementById('error_startAddress').innerHTML = 'Please enter a start address'
+            valid = false
         }
+        if (!!!startTime){
+            document.getElementById('startTime').classList.add('border','border-danger')
+            document.getElementById('error_startTime').innerHTML = 'Please select a start time'
+            valid = false
+        }
+        if (!!!endTime){
+            document.getElementById('endTime').classList.add('border','border-danger')
+            document.getElementById('error_endTime').innerHTML = 'Please select a end time'
+            valid = false
+        }
+        if (max_weight < 0){
+            document.getElementsByName('max_weight_per_driver')[0].classList.add('border','border-danger')
+            document.getElementById('error_max_weight_per_driver').innerHTML = 'Please enter a number greater or equal to 0 '
+            valid = false
+        }
+        if (height < 0){
+            document.getElementsByName('dis_height')[0].classList.add('border','border-danger')
+            document.getElementById('error_dis_height').innerHTML = 'Please enter a number greater or equal to 0 '
+            valid = false
+        }
+        if (width < 0){
+            document.getElementsByName('dis_width')[0].classList.add('border','border-danger')
+            document.getElementById('error_dis_width').innerHTML = 'Please enter a number greater or equal to 0 '
+            valid = false
+        }
+        if (depth < 0){
+            console.log('lol')
+            document.getElementsByName('dis_depth')[0].classList.add('border','border-danger')
+            document.getElementById('error_dis_depth').innerHTML = 'Please enter a number greater or equal to 0 '
+            valid = false
+        }
+        return valid
+    }
 
-        data = {
-                driverIDs:Array.prototype.slice.call(document.querySelectorAll('select[name="driverIDs"] option:checked'),0).map(function(v,i,a) {return v.value;}),
-                orderIDs:ids,
-                indexes:{
-                    distance_index:parseFloat(document.getElementsByName('distance_index')[0].value),
-                    duration_index:parseFloat(document.getElementsByName('duration_index')[0].value),
-                    worth_index:parseFloat(document.getElementsByName('worth_index')[0].value),
-                },
-                constraints:{
-                    max_orders_per_driver:parseInt(document.getElementsByName('max_order_per_driver')[0].value),
-                    start_time:moment.utc(document.getElementsByName('startTime')[0].value).unix()
-                }
-            }
+
+    dispatching_request = (data , url = '{% url "delivery:trip-list" %}') =>{
         Notiflix.Block.hourglass('#optimizationModal .modal-content');
         $.ajax({
             method:"POST",
-            url:'{% url "delivery:trip-list" %}',
+            url:url,
             data:JSON.stringify(data),
             contentType: 'application/json',
         }).done((res) => {
@@ -651,6 +682,57 @@
             );
         })
     }
+    disposition_request = (data) =>{
+        
+    }
+
+    const optimizeDelivery = () => {
+        ids = []
+        table.getSelectedData().forEach(order => ids.push(order.id))
+        if (document.getElementById('method').value == '0' && !validateDisptachingOptimzationForm()){
+            return
+        }
+        if (document.getElementById('method').value == '1' && !validateDispositionOptimzationForm() ){
+            return
+        }
+
+        if (document.getElementById('method').value == '0'){
+            data = {
+                method:0,
+                driverIDs:Array.prototype.slice.call(document.querySelectorAll('select[name="driverIDs"] option:checked'),0).map(function(v,i,a) {return v.value;}),
+                orderIDs:ids,
+                indexes:{
+                    distance_index:parseFloat(document.getElementsByName('distance_index')[0].value),
+                    duration_index:parseFloat(document.getElementsByName('duration_index')[0].value),
+                    worth_index:parseFloat(document.getElementsByName('worth_index')[0].value),
+                },
+                constraints:{
+                    max_orders_per_driver:parseInt(document.getElementsByName('max_order_per_driver')[0].value),
+                    start_time:moment.utc(document.getElementsByName('startTime')[0].value).unix()
+                }
+            }
+
+            dispatching_request(data)
+        }
+        else{
+            data = {
+                method:1,
+                driverDetails:{
+                    driverDimension:{
+                        height:parseFloat(document.getElementById('dis_height').value),
+                        width:parseFloat(document.getElementById('dis_width').value),
+                        depth:parseFloat(document.getElementById('dis_depth').value),
+                    },
+                    startAddress:document.getElementById('startAddress').value,
+                    startTime:moment.utc(document.getElementsByName('startTime')[0].value).unix(),
+                    endTime:moment.utc(document.getElementsByName('endTime')[0].value).unix(),
+                    maxWeight:parseFloat(document.getElementsByName('max_weight_per_driver')[0].value),
+                },
+                orderIDs:ids,
+            }
+            dispatching_request(data , '{% url "delivery:trip-create-dispostion" %}')
+        }
+    }
 
 
 
@@ -660,6 +742,100 @@
     strictBounds: false,
     };
     const autocomplete = new google.maps.places.Autocomplete(input, options);
+
+    addGoogleAutoComplete = (id) =>{
+        let input1 = document.getElementById(id);
+        let options1 = {
+        fields: ["address_components", "geometry", "icon", "name"],
+        strictBounds: false,
+        };
+        let autocomplete = new google.maps.places.Autocomplete(input1, options1);
+    }
+
+
+
+    const dispatchingForm = `<h6 class="mt-2"> Time Frame</h6>
+                    <div class="mb-2">
+                        <label for="" class="text-grey" style="font-size:11.5px">Start time</label>
+                        <input type="datetime-local" name="startTime" id="startTime" class="form-control form-control-sm">
+                        <label class="text-danger" id="error_startTime">  </label>
+                    </div>
+                    <h6 class="mt-2"> Drivers</h6>
+                    <div class="mb-2">
+                        <label for="" class="text-grey" style="font-size:11.5px">Select Drivers <span class="text-danger">*</span></label>
+                        <select class="form-select form-select-sm" multiple id="driverIDs" name="driverIDs">
+                        </select>
+                        <label class="text-danger" id="error_driverIDs">  </label>
+                    </div>
+                    <h6 class="mt-2"> Constraints</h6>
+                    <div class="mb-2">
+                        <label for="" class="text-grey" style="font-size:11.5px">Max deliveries per driver</label>
+                        <input type="number" name="max_order_per_driver" id="max_order_per_driver" class="form-control form-control-sm" value="50" min="1" max="50">
+                        <label class="text-danger" id="error_max_order_per_driver">  </label>
+                    </div>
+                    <h6 class="mt-2"> Indexes</h6>
+                    <div class="mb-2 row">
+                        <div class="col-4">
+                            <label for="" class="text-grey" style="font-size:11.5px">distance</label>
+                            <input type="number" name="distance_index" id="" class="form-control form-control-sm" value=0.4>
+                        </div>
+                       <div class="col-4">
+                            <label for="" class="text-grey" style="font-size:11.5px">duration</label>
+                            <input type="number" name="duration_index" id="" class="form-control form-control-sm" value=0.4>
+                        </div>
+                        <div class="col-4">
+                            <label for="" class="text-grey" style="font-size:11.5px">worth</label>
+                            <input type="number" name="worth_index" id="" class="form-control form-control-sm" value=0.2>
+                        </div>
+                    </div>
+                    `
+
+    const dispositionForm = `<h6 class="mt-2"> Time Frame</h6>
+                    <div class="mb-2 row">
+
+                        <div class="col-lg-6">
+                            <label for="" class="text-grey" style="font-size:11.5px">Start time</label>
+                            <input type="datetime-local" name="startTime" id="startTime" class="form-control form-control-sm">
+                            <label class="text-danger" id="error_startTime">  </label>
+                        </div>
+                        <div class="col-lg-6">
+                            <label for="" class="text-grey" style="font-size:11.5px">End time</label>
+                            <input type="datetime-local" name="endTime" id="endTime" class="form-control form-control-sm">
+                            <label class="text-danger" id="error_endTime">  </label>
+                        </div>
+                    </div>
+                    <h6 class="mt-2"> Driver Details</h6>
+                    <div class="mb-2">
+                        <label for="" class="text-grey" style="font-size:11.5px">Start address</label>
+                        <input type="text" name="startAddress" id="startAddress" class="form-control form-control-sm">
+                        <label class="text-danger" id="error_startAddress">  </label>
+                    </div>
+                    <div class="mb-2">
+                        <label for="" class="text-grey" style="font-size:11.5px">Max weight per driver(kg)</label>
+                        <input type="number" name="max_weight_per_driver" id="max_weight_per_driver" class="form-control form-control-sm" value="1600">
+                        <label class="text-danger" id="error_max_weight_per_driver">  </label>
+                    </div>
+                    <h6 class="mt-2"> Vehicle Dimensions</h6>
+                    <div class="mb-2 row">
+                        <div class="col-4">
+                            <label for="" class="text-grey" style="font-size:11.5px">Width(m)</label>
+                            <input type="number" name="dis_width" id="dis_width" class="form-control form-control-sm" value=1.5>
+                            <label class="text-danger" id="error_dis_width">  </label>
+                        </div>
+                       <div class="col-4">
+                            <label for="" class="text-grey" style="font-size:11.5px">Height(m)</label>
+                            <input type="number" name="dis_height" id="dis_height" class="form-control form-control-sm" value=3>
+                            <label class="text-danger" id="error_dis_height">  </label>
+                        </div>
+                        <div class="col-4">
+                            <label for="" class="text-grey" style="font-size:11.5px">Depth(m)</label>
+                            <input type="number" name="dis_depth" id="dis_depth" class="form-control form-control-sm" value=2.5>
+                            <label class="text-danger" id="error_dis_depth">  </label>
+                        </div>
+                    </div>
+                    
+                </div>
+    `
     
 </script>
 {% endblock %}

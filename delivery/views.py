@@ -8,13 +8,15 @@ from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.core.mail import EmailMultiAlternatives
 from django.urls import reverse
+from django.utils import timezone
+
+from datetime import timedelta
 
 from .models import Order,Driver,Trip
 from .serializer import OrderSerializer , DriverSerializer, TripSerializer
 from .forms import OrderForm,FieldSet,DriverForm
-from utils.generator import dispatching_request,geocoder
+from utils.generator import dispatching_request,geocoder,disposition_request
 from .filters import OrderFilter , TripFilter
-from synos.settings import EMAIL_HOST_USER
 
 @login_required
 def orders(request):
@@ -219,10 +221,39 @@ class TripViewSet(viewsets.ModelViewSet):
                 order.distance = o['distance']
                 order.save()   
 
-        return Response({'data':self.serializer_class(res,many=True).data,"unassigned":len(result['unassigned_orders'])},status=200)     
+        return Response({'data':self.serializer_class(res,many=True).data,"unassigned":len(result['unassigned_orders'])},status=200)  
 
-    
+    @action(detail=False,methods=['post'])
+    def create_dispostion(self,*args,**kwargs):
+        orderIDs = self.request.data.get("orderIDs",[])
+        driverDetails = self.request.data.get("driverDetails",{})
+        dimensions = driverDetails.get("driverDimension",None)
+        geo = geocoder(driverDetails.get("startAddress",None))
+        maxWeight = driverDetails.get("maxWeight",1600)
+        if geo is None:
+            raise serializers.ValidationError({'startAddress':'Address could not be geocoded'})
+        start_latitude = geo.latitude
+        start_longitude = geo.longitude
+        startTime = driverDetails.get("startTime",timezone.now().timestamp())
+        endTime = driverDetails.get("endTime",(timezone.now() + timedelta(hours=5)).timestamp())
+        orders = Order.objects.filter(id__in = [o for o in orderIDs],status = 0)
+        result = disposition_request(orders ,startTime , endTime ,start_latitude  , start_longitude ,dimensions,maxWeight)
+        trips = result['trips']
+        res = []
+        for t  in trips:
+            trip = Trip.objects.create(user=self.request.user,total_duration = t['total_duration'] , total_distance = t['total_distance'] , start_time = t['start_time']
+             , end_time = t['end_time'], polyline = t['polyline'],start_address = geo.address ,  start_latitude = start_latitude , start_longitude = start_longitude)
+            res.append(trip)
+            for o in t['orders']:
+                order = Order.objects.get(id=o['identification'])
+                order.trip = trip
+                order.start_time = o['start_time']
+                order.end_time = o['end_time']
+                order.arrival_time   = o['arrival_time']
+                order.stop_id = o['stop_id']
+                order.status = 1
+                order.duration = o['duration']
+                order.distance = o['distance']
+                order.save()   
 
-
-
-
+        return Response({'data':self.serializer_class(res,many=True).data},status=200)  

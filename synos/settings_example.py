@@ -33,6 +33,11 @@ SYNERTICS_API_KEY = ""# add your SYNERTICS API KEY here
 GOOGLE_API_KEY = "" # add your GOOGLE API KEY here
 MAPBOX_API_KEY = "" # add your MAPBOX API KEY here
 
+if DEBUG:
+    CURRENT_SITE = "http://127.0.0.1:8000"
+else:
+    CURRENT_SITE = "https://synos.com" # change this to your domain name
+# Application definition
 
 # Application definition
 

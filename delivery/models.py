@@ -6,12 +6,13 @@ from django.dispatch import receiver
 from django.db.models import Min
 from django.core.mail import EmailMultiAlternatives
 from django.urls import reverse
+from django.conf import settings
+
 
 from rest_framework.exceptions import ValidationError as VE
 
 from utils.generator import NanoID,dispatching_request
 from account.models import User
-from synos.settings import EMAIL_HOST_USER , CURRENT_SITE
 
 class OrderStatus(models.IntegerChoices):
     UNASSIGNED = 0, 'unassigned'
@@ -187,8 +188,8 @@ class Driver(Geolocation):
     #send email to the drivers with the link to web app
     def notify(self,subject, message , *args, **kwargs):
         driver = self
-        url = CURRENT_SITE+reverse("delivery:driver_trips", kwargs={'id':driver.id})
-        from_email, to = EMAIL_HOST_USER, driver.email
+        url = settings.CURRENT_SITE+reverse("delivery:driver_trips", kwargs={'id':driver.id})
+        from_email, to = settings.EMAIL_HOST_USER, driver.email
         html_content = message + "<p> Your web app link is below:</p> <a href='" + url + "'>Click here to view your trips</a>"
         msg = EmailMultiAlternatives(subject,"" , from_email, [to])
         msg.attach_alternative(html_content, "text/html")

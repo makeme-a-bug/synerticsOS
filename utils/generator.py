@@ -6,6 +6,7 @@ from synos.settings import SYNERTICS_API_KEY,GOOGLE_API_KEY
 import json
 from geopy.geocoders import Nominatim,GoogleV3
 from geopy.extra.rate_limiter import RateLimiter
+import pytz
 
 googleGeolocator = GoogleV3(timeout=10,user_agent="Synertics",api_key = GOOGLE_API_KEY )
 geolocator = Nominatim(timeout=10, user_agent = "myGeolocator")
@@ -35,7 +36,7 @@ def timeCorrection(value , error , field):
     if value == '':
         return '', error
     try:
-        value = parser.parse(value).strftime('%Y-%m-%d %H:%M:%S')
+        value = parser.parse(value).replace(tzinfo=pytz.utc).strftime('%Y-%m-%d %H:%M:%S')
     except:
         error[field] = 'invalid time formate'
     return value , error
@@ -96,6 +97,39 @@ def dispatching_request(orders, drivers , constraints , indexes,*args,**kwargs):
     return r.json()
 
 
+# send request to synertics disposition api
+def disposition_request(orders, startTime , endTime , latitude , longitude ,dimensions,weight,*args,**kwargs):        
+    orders = pd.DataFrame(list(orders.values()))
+    orders['identification'] = orders['id']
+    orders = orders[['identification','buffer','longitude','latitude','time_from','time_to','weight','depth','width','height']]
+
+    url = "https://www.synertics.io/disposition/batch/"
+    headers = {
+            'Authorization': "TOKEN "+SYNERTICS_API_KEY,
+            'Content-Type': 'application/json'
+    }
+    print(headers)
+    payload = {
+        "orders" : orders.to_dict('records'),
+        "driver_details" : {
+            "starting_location":{
+                "latitude": latitude,
+                "longitude": longitude
+            },
+            "max_weight_per_driver":weight,
+            "start_time":startTime,
+            "end_time":endTime,
+            "vehicle_dimensions": dimensions,
+        },
+    }
+
+    print(json.dumps(payload))
+
+    r = requests.post(url, headers=headers, data=json.dumps(payload), verify=False,timeout=1000)
+
+    print(r.json())
+
+    return r.json()
 
 def geocoder(address):
     cord = googleGeolocator.geocode(address)
