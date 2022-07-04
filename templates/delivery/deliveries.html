@@ -35,11 +35,11 @@
 <div class="container-fluid p-0 d-flex justify-content-end align-items-start h100-50 flex-column">
     <div class="w-100 d-flex justify-content-between align-items-end my-auto px-2 flex-wrap">
         <div class="d-flex flex-fill flex-md-nowrap flex-wrap">
-            <button class="btn btn-danger btn-sm me-2 hide-div mb-2 mb-lg-0 " id="delete" onclick="conform_delete()"><i class="fas fa-trash"></i> Delete </button>
-            <button class="btn btn-primary btn-sm me-2 hide-div mb-2 mb-lg-0 " id="update" onclick="showUpdate();"><i class="fas fa-trash"></i> Update </button>
-            <button class="btn btn-primary btn-sm me-2 hide-div mb-2 mb-lg-0 " id="optimize" data-bs-toggle="modal" data-bs-target="#optimizationModal"><i class="fas fa-bolt"></i> Optimize </button>
+            <button class="btn btn-danger btn-sm me-2 hide-div mb-2 mb-md-0  " id="delete" onclick="conform_delete()"><i class="fas fa-trash"></i> Delete </button>
+            <button class="btn btn-primary btn-sm me-2 hide-div mb-2 mb-md-0 " id="update" onclick="showUpdate();"><i class="fas fa-trash"></i> Update </button>
+            <button class="btn btn-primary btn-sm me-2 hide-div mb-2 mb-md-0 " id="optimize" data-bs-toggle="modal" data-bs-target="#optimizationModal"><i class="fas fa-bolt"></i> Optimize </button>
             <!-- <input type="text" class="form-control form-control-sm search" placeholder="search"> -->
-            <div class="input-group search mb-2 mb-lg-0 " style="height: fit-content;width: fit-content;">
+            <div class="input-group search mb-2 mb-md-0 " style="height: fit-content;width: fit-content;">
                 <div class="form-outline">
                   <input type="search" id="search" class="form-control form-control-sm" placeholder="Search..." autocomplete="off" oninput="table.replaceData()"/>
                 </div>
@@ -47,12 +47,12 @@
                   <i class="fas fa-search"></i>
                 </button>
             </div>
-            <button type="button" class="btn btn-sm btn-primary ms-1 mb-2" data-bs-toggle="modal" data-bs-target="#filterModal">
+            <button type="button" class="btn btn-sm btn-primary ms-1 mb-2 mb-md-0 " data-bs-toggle="modal" data-bs-target="#filterModal">
                 <i class="fas fa-filter"></i>
             </button>
         </div>
 
-        <div class="d-flex flex-fill justify-content-end mb-2 mb-lg-0">
+        <div class="d-flex flex-fill justify-content-end mb-2 mb-md-0 ">
             <button class="btn btn-primary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#deliveryModal">
                 <i class="fas fa-plus"></i> Add order
             </button>
@@ -397,6 +397,9 @@
         },
     });
 
+    table.on("rowDblClick", function(e, row){
+        showUpdate(id=row.getData().id)
+    });
 
     table.on("dataLoading", function(data){
         Notiflix.Block.hourglass(".tabulator-tableholder");
@@ -470,12 +473,10 @@
         })
     }
 
-    const showUpdate = () => {
-
-        id = table.getSelectedData()[0].id
-
-        
-
+    const showUpdate = (id=null) => {
+        if (!!!id){
+            id = table.getSelectedData()[0].id
+        }
         $.get(
             `{% url 'delivery:order-detail' pk=0 %}`.replace("0",id),
         ).then((res) => {

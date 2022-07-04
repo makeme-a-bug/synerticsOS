@@ -1,59 +1,9 @@
-import nanoid
-import pandas as pd
-import dateutil.parser as parser
-import requests
-from synos.settings import SYNERTICS_API_KEY,GOOGLE_API_KEY
+from django.conf import settings
+
 import json
-from geopy.geocoders import Nominatim,GoogleV3
-from geopy.extra.rate_limiter import RateLimiter
-import pytz
+import pandas as pd
+import requests
 
-googleGeolocator = GoogleV3(timeout=10,user_agent="Synertics",api_key = GOOGLE_API_KEY )
-geolocator = Nominatim(timeout=10, user_agent = "myGeolocator")
-
-def createNanoID():
-    id = nanoid.generate('1234567890abcdef_',size=25)
-    return str(id)
-
-def NanoID():
-    id = nanoid.generate('1234567890abcdef_',size=10)
-    return str(id)
-
-def read_file(file):
-    try:
-        df = pd.read_excel(file.file , engine='openpyxl')
-    except:
-        try:
-            df = pd.read_csv(file.file.path)
-        except:
-            return True , None
-    
-    return False , df
-
-def timeCorrection(value , error , field):
-    if field in error:
-        del error[field]
-    if value == '':
-        return '', error
-    try:
-        value = parser.parse(value).replace(tzinfo=pytz.utc).strftime('%Y-%m-%d %H:%M:%S')
-    except:
-        error[field] = 'invalid time formate'
-    return value , error
-
-def positiveValue(value,error,field):
-    if field in error:
-        del error[field]
-    if value == None or value == '' or value == 'None':
-        return 0, error
-    try:
-        value = float(value)
-    except:
-        error[field] = 'invalid value'
-        return value , error
-    if value < 0:
-        error[field] = 'value must be positive'
-    return value , error
 
 # send request to synertics dispatching api
 def dispatching_request(orders, drivers , constraints , indexes,*args,**kwargs):        
@@ -79,7 +29,7 @@ def dispatching_request(orders, drivers , constraints , indexes,*args,**kwargs):
 
     url = "https://www.synertics.io/dispatching/batch/"
     headers = {
-            'Authorization': "TOKEN "+SYNERTICS_API_KEY,
+            'Authorization': "TOKEN "+ settings.SYNERTICS_API_KEY,
             'Content-Type': 'application/json'
     }
     payload = {
@@ -105,10 +55,9 @@ def disposition_request(orders, startTime , endTime , latitude , longitude ,dime
 
     url = "https://www.synertics.io/disposition/batch/"
     headers = {
-            'Authorization': "TOKEN "+SYNERTICS_API_KEY,
+            'Authorization': "TOKEN "+ settings.SYNERTICS_API_KEY,
             'Content-Type': 'application/json'
     }
-    print(headers)
     payload = {
         "orders" : orders.to_dict('records'),
         "driver_details" : {
@@ -123,19 +72,8 @@ def disposition_request(orders, startTime , endTime , latitude , longitude ,dime
         },
     }
 
-    print(json.dumps(payload))
 
     r = requests.post(url, headers=headers, data=json.dumps(payload), verify=False,timeout=1000)
 
-    print(r.json())
 
     return r.json()
-
-def geocoder(address):
-    cord = googleGeolocator.geocode(address)
-    if cord is None:
-        cord =  geolocator.geocode(address)
-    return cord
-
-
-

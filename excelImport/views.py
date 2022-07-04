@@ -6,7 +6,7 @@ from django.http import HttpResponse, Http404
 from django.conf import settings
 
 from .models import ExcelFile
-from utils.generator import read_file , timeCorrection , positiveValue,geocoder , NanoID
+from utils.helper import read_file , timeCorrection , positiveValue,geocoder , NanoID
 from delivery.models import Order
 from .helper import cleanFolder , orderTypeCheck , orderTypeconverter
 

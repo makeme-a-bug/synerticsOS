@@ -15,7 +15,8 @@ from datetime import timedelta
 from .models import Order,Driver,Trip
 from .serializer import OrderSerializer , DriverSerializer, TripSerializer
 from .forms import OrderForm,FieldSet,DriverForm
-from utils.generator import dispatching_request,geocoder,disposition_request
+from utils.requests import dispatching_request,disposition_request
+from utils.helper import geocoder
 from .filters import OrderFilter , TripFilter
 
 @login_required
@@ -90,14 +91,17 @@ class OrderViewSet(viewsets.ModelViewSet):
     def perform_update(self, serializer):
         id = self.request.parser_context['kwargs']['pk']
         order = Order.objects.get(id=id)
-        if order.address != serializer.validated_data['address']:
-            geocode = geocoder(serializer.validated_data['address'])
-            if geocode:
-                lat = geocode.latitude
-                lon = geocode.longitude
-                serializer.save(latitude = lat, longitude = lon)
+        if (self.request.method == "PATCH" and serializer.validated_data.get('address',None)) or self.request.method == "PUT":
+            if order.address != serializer.validated_data['address']:
+                geocode = geocoder(serializer.validated_data['address'])
+                if geocode:
+                    lat = geocode.latitude
+                    lon = geocode.longitude
+                    serializer.save(latitude = lat, longitude = lon)
+                else:
+                    raise serializers.ValidationError({'address':'Address could not be geocoded'})
             else:
-                raise serializers.ValidationError({'address':'Address could not be geocoded'})
+                serializer.save()
         else:
             serializer.save()
 
@@ -151,14 +155,17 @@ class DriverViewSet(viewsets.ModelViewSet):
     def perform_update(self, serializer):
         id = self.request.parser_context['kwargs']['pk']
         driver = Driver.objects.get(user = self.request.user,id=id)
-        if driver.address != serializer.validated_data['address']:
-            geocode = geocoder(serializer.validated_data['address'])
-            if geocode:
-                lat = geocode.latitude
-                lon = geocode.longitude
-                serializer.save(latitude = lat, longitude = lon)
+        if (self.request.method == "PATCH" and serializer.validated_data.get('address',None)) or self.request.method == "PUT":
+            if driver.address != serializer.validated_data['address']:
+                geocode = geocoder(serializer.validated_data['address'])
+                if geocode:
+                    lat = geocode.latitude
+                    lon = geocode.longitude
+                    serializer.save(latitude = lat, longitude = lon)
+                else:
+                    raise serializers.ValidationError({'address':'Address could not be geocoded'})
             else:
-                raise serializers.ValidationError({'address':'Address could not be geocoded'})
+                serializer.save()
         else:
             serializer.save()
 
@@ -221,7 +228,7 @@ class TripViewSet(viewsets.ModelViewSet):
                 order.distance = o['distance']
                 order.save()   
 
-        return Response({'data':self.serializer_class(res,many=True).data,"unassigned":len(result['unassigned_orders'])},status=200)  
+        return Response({'data':self.serializer_class(res,many=True).data,"unassigned":len(result['unassigned_orders'])},status=201)  
 
     @action(detail=False,methods=['post'])
     def create_dispostion(self,*args,**kwargs):
@@ -237,6 +244,7 @@ class TripViewSet(viewsets.ModelViewSet):
         startTime = driverDetails.get("startTime",timezone.now().timestamp())
         endTime = driverDetails.get("endTime",(timezone.now() + timedelta(hours=5)).timestamp())
         orders = Order.objects.filter(id__in = [o for o in orderIDs],status = 0)
+        
         result = disposition_request(orders ,startTime , endTime ,start_latitude  , start_longitude ,dimensions,maxWeight)
         trips = result['trips']
         res = []
@@ -256,4 +264,4 @@ class TripViewSet(viewsets.ModelViewSet):
                 order.distance = o['distance']
                 order.save()   
 
-        return Response({'data':self.serializer_class(res,many=True).data},status=200)  
+        return Response({'data':self.serializer_class(res,many=True).data},status=201)  
