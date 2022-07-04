@@ -101,7 +101,7 @@ def dispatching_request(orders, drivers , constraints , indexes,*args,**kwargs):
 def disposition_request(orders, startTime , endTime , latitude , longitude ,dimensions,weight,*args,**kwargs):        
     orders = pd.DataFrame(list(orders.values()))
     orders['identification'] = orders['id']
-    orders = orders[['identification','buffer','longitude','latitude','time_from','time_to','weight','depth','width','height']]
+    orders = orders[['identification','buffer','longitude','latitude','time_from','time_to','weight','depth','width','height','order_type']]
 
     url = "https://www.synertics.io/disposition/batch/"
     headers = {

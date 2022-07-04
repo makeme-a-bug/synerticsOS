@@ -31,7 +31,7 @@
 {% block body %}
 
 <div class="container d-flex justify-content-center align-items-center h100-70 flex-column">
-    <h3 class="text-syn mb-4">Define delivery fields</h3>
+    <h3 class="text-syn mb-4">Define order fields</h3>
     <div class="w-100 d-flex justify-content-end align-items-center flex-nowrap mb-2">
         <label for="" class="me-2"> Geocode provided </label>
         <input type="checkbox" name="geocoded1" checked>
@@ -53,10 +53,10 @@
                             <option value="timeFrom">Time from</option>
                             <option value="timeTo">Time to</option>
                             <option value="buffer">Buffer</option>
-                            <option value="height">height</option>
-                            <option value="width">width</option>
-                            <option value="depth">depth</option>
-                            <option value="weight">weight</option>
+                            <option value="height">Height</option>
+                            <option value="width">Width</option>
+                            <option value="depth">Depth</option>
+                            <option value="weight">Weight</option>
                             <option value="orderType">Order type</option>
                         </select></th>
                         {% endfor %}
@@ -94,7 +94,7 @@
 {% block js %}
 <script>
 
-    function noSameValue(event) {
+    const noSameValue = (event) => {
         
         document.querySelectorAll('select').forEach((e)=>{
             if (e.getAttribute('name') != this.getAttribute('name')){
@@ -156,7 +156,6 @@
 
     document.getElementById('columns').addEventListener('submit',function (event){
         event.preventDefault()
-        console.log(checkAddressField())
         if (checkAddressField()){
 
             if(checkLatLon()){

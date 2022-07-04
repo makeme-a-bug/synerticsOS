@@ -7,7 +7,7 @@ app_name = 'delivery'
 router = routers.SimpleRouter()
 
 urlpatterns = [
-    path('deliveries/', views.orders , name='deliveries'),
+    path('orders/', views.orders , name='deliveries'),
     path('drivers/', views.drivers , name='drivers'),
     path('trips/', views.trips , name='trips'),
     path('driverTrips/<str:id>/', views.driver_trips , name='driver_trips'),

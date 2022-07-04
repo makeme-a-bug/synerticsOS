@@ -23,20 +23,44 @@
         <div class="d-flex me-auto" style="width: 200px;">
             <img src="https://synertics.io/staticfiles/img/logo-vector.svg" alt="synertics_logo" class="logo">
         </div>
-        <div class="d-flex mx-auto">
+        <div class="d-flex mx-auto mobile-hide">
             <a href="{% url 'delivery:trips' %}" class="mx-2 text-center syn-link {% if trips %} active {% endif %}"> <span class="mx-auto">Trips</span> </a>
-            <a href="{% url 'delivery:deliveries' %}" class="mx-2 text-center syn-link {% if deliveries %} active {% endif %}"> <span class="mx-auto">Deliveries</span>  </a>
+            <a href="{% url 'delivery:deliveries' %}" class="mx-2 text-center syn-link {% if deliveries %} active {% endif %}"> <span class="mx-auto">Orders</span>  </a>
             <a href="{% url 'delivery:drivers' %}" class="mx-2 text-center syn-link {% if drivers %} active {% endif %}"> <span class="mx-auto">Drivers</span> </a>
         </div>
-        <div class="d-flex ms-auto justify-content-end" style="width: 200px;">
+        <div class="d-flex ms-auto justify-content-end mobile-hide" style="width: 200px;">
             <a href="{% url 'excel:import' %}" class="syn-link mx-1" title="Excel import"><i class="fas fa-file-import me-2"></i></a> 
             <a href="{% url 'account:account' %}" class="syn-link mx-1" title="settings"> <i class="fas fa-cog  me-2"></i> </a>
-            <a href="{% url 'account:logout' %" class="syn-link mx-1" title="logout"> <i class="fas fa-sign-out-alt me-2"></i></a>
+            <a href="{% url 'account:logout' %}" class="syn-link mx-1" title="logout"> <i class="fas fa-sign-out-alt me-2"></i></a>
             {% if deliveries %}
             <a onclick="toggleFullScreen()" class="syn-link mx-1" title="Full screen"><i class="fas fa-expand-alt" ></i></a>
             {% endif %}
         </div>
+        <div class="hamburger">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
     </div>
+    <nav class="mobile-nav">
+        <ul class="d-flex flex-column justify-content-start align-items-start mt-2 px-4">
+            <li class="w-100 mb-3 main-section-mobile" >
+                <a href="{% url 'delivery:trips' %}"   class="w-100 d-flex justify-content-between align-items-center"> <span>Trips</span></a>
+            </li>
+            <li class="w-100 mb-3 main-section-mobile" >
+                <a href="{% url 'delivery:deliveries' %}" class="w-100 d-flex justify-content-between align-items-center"> <span>Orders</span></a>
+            </li>
+            <li class="w-100 mb-3">
+                <a href="{% url 'delivery:drivers' %}" class="w-100 d-flex justify-content-between align-items-center"> <span>Drivers</span> </a>
+            </li>
+            <li class="w-100 mb-3">
+                <a class="w-100 d-flex justify-content-start align-items-center" href="{% url 'account:account' %}"> <i class="fas fa-cog  me-2"></i> Settings</a>
+            </li>
+            <li class="w-100 mb-3">
+                <a href="{% url 'account:logout' %}" class="w-100 d-flex justify-content-start align-items-center" > <i class="fas fa-sign-out-alt me-2"></i> Logout</a>
+            </li>
+        </ul>    
+    </nav>
     {% block body %}
     {% endblock %}
 </body>
@@ -83,6 +107,15 @@ $.ajaxSetup({
     }
 });
 
+document.querySelector('.hamburger').addEventListener('click',function() {
+        this.classList.toggle("is-active")
+        document.querySelector('.mobile-nav').classList.toggle('is-active')
+        if (!this.classList.contains('is-active')){
+            document.querySelectorAll('.sub-section').forEach((el)=>{
+               el.classList.remove('is-active')
+            })
+        }
+})
 </script>
 <script>
     function toggleFullScreen() {

@@ -54,7 +54,7 @@
 
         <div class="d-flex flex-fill justify-content-end mb-2 mb-lg-0">
             <button class="btn btn-primary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#deliveryModal">
-                <i class="fas fa-plus"></i> Add delivery
+                <i class="fas fa-plus"></i> Add order
             </button>
            <a href="{% url 'excel:import' %}">
             <button class="btn btn-primary btn-sm">
@@ -71,7 +71,7 @@
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" >
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title" id="deliveryModalLabel">Delivery</h5>
+          <h5 class="modal-title" id="deliveryModalLabel">order</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
@@ -152,7 +152,7 @@
 </div>
 
 
-#filter modal
+<!-- #filter modal -->
 <div class="modal fade" id="filterModal" aria-labelledby="filterModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" >
       <div class="modal-content">
@@ -337,7 +337,7 @@
         {title:"Address", field:"address", sorter:"string", hozAlign:"left", width:350,formatter:"textarea"},
         {title:"Assigned to", field:"trip.driver.name", sorter:"string", hozAlign:"left",},
         {title:"Status", field:"status", sorter:"string", hozAlign:"left",formatter:statusFormatte},
-        {title:"Delivery type", field:"order_type", sorter:"string", hozAlign:"left",formatter:dTypeFormatte},
+        {title:"Order type", field:"order_type", sorter:"string", hozAlign:"left",formatter:dTypeFormatte},
         {title:"Time From", field:"time_from", sorter:"string", hozAlign:"left",formatter:timeFormatte},
         {title:"Time To", field:"time_to", sorter:"string", hozAlign:"left",formatter:timeFormatte},
         {title:"Buffer", field:"buffer", sorter:"number", hozAlign:"right",formatter:numberFormatte},
@@ -351,7 +351,7 @@
         layout:"fitColumns",
         ajaxURL:"{% url 'delivery:order-list' %}",
         progressiveLoad:"load",
-        paginationSize:200,
+        paginationSize:500,
         placeholder:"No Data Set",
         sortMode:"remote",
         headerSortElement:"<i class='fas fa-arrow-up'></i>",
@@ -362,7 +362,7 @@
                     <i class="fas fa-file-import me-2"></i> Import Excel
             </a>
             <button class="btn btn-primary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#deliveryModal">
-                <i class="fas fa-plus"></i> Add delivery
+                <i class="fas fa-plus"></i> Add order
             </button>
         `,
         ajaxConfig:{
@@ -769,7 +769,7 @@
                     </div>
                     <h6 class="mt-2"> Constraints</h6>
                     <div class="mb-2">
-                        <label for="" class="text-grey" style="font-size:11.5px">Max deliveries per driver</label>
+                        <label for="" class="text-grey" style="font-size:11.5px">Max orders per driver</label>
                         <input type="number" name="max_order_per_driver" id="max_order_per_driver" class="form-control form-control-sm" value="50" min="1" max="50">
                         <label class="text-danger" id="error_max_order_per_driver">  </label>
                     </div>

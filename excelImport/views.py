@@ -8,19 +8,15 @@ from django.conf import settings
 from .models import ExcelFile
 from utils.generator import read_file , timeCorrection , positiveValue,geocoder , NanoID
 from delivery.models import Order
-
+from .helper import cleanFolder , orderTypeCheck , orderTypeconverter
 
 import pandas as pd
 import numpy as np
-from geopy.geocoders import Nominatim
 import dateutil.parser as parser
 import json
 import datetime
 import os
 import pytz
-
-geolocator = Nominatim(timeout=10, user_agent = "myGeolocator")
-
 
 
 
@@ -73,7 +69,7 @@ def fieldMapping(request,*args,**kwargs):
             height , order['error'] = positiveValue(order.get(data.get('height',None),None),order['error'],'height')
             width , order['error'] = positiveValue(order.get(data.get('width',None),None),order['error'],'width')
             depth , order['error'] = positiveValue(order.get(data.get('depth',None),None),order['error'],'depth')
-            orderType , order['error'] = positiveValue(order.get(data.get('orderType',None),None),order['error'],'order_type')
+            orderType , order['error'] = orderTypeCheck(order.get(data.get('orderType',None),None),order['error'],'order_type')
             buffer , order['error'] = positiveValue(order.get(data.get('buffer',None),None),order['error'],'buffer')
 
 
@@ -105,27 +101,29 @@ def fieldMapping(request,*args,**kwargs):
     
 
 def addDeliveries(request):
-    df = pd.read_csv(f'temp/{request.session["csvfileId"]}_orders.csv')
 
+    df = pd.read_csv(f'temp/{request.session["csvfileId"]}_orders.csv')
     if request.method == 'POST': 
         df['error'] = df['error'].apply(json.loads)
         df['errorLen'] = df['error'].apply(len)
         if not df.loc[df['errorLen'] > 0,'error'].empty:
-            return render(request, 'excelImport/orders.html',{'data':pd.read_csv('temp/orders.csv').to_json(orient='records'), 'error':'There are still some invalid fields please correct them'})
+            return render(request, 'excelImport/deliveries.html',{'data':pd.read_csv(f'temp/{request.session["csvfileId"]}_orders.csv').to_json(orient='records'), 'error':'There are still some invalid fields please correct them'})
 
         df['time_from'] = df['time_from'].apply(lambda x: parser.parse(x).replace(tzinfo=pytz.utc).timestamp() if not pd.isnull(x) else 0)
         df['time_to'] = df['time_to'].apply(lambda x: parser.parse(x).replace(tzinfo=pytz.utc).timestamp() if not pd.isnull(x) else 0)
+        df['order_type'] = df['order_type'].apply(orderTypeconverter)
         df = df[['time_from','time_to','address','latitude','longitude','buffer','weight','depth','height','width','order_type']]
         for _ , order in df.iterrows():
             order = Order.objects.create(user=request.user,**order)
         
+        cleanFolder('temp/')
         return redirect('delivery:deliveries')
 
     return render(request, 'excelImport/deliveries.html',{'data':df.to_json(orient='records')})
 
 def correctData(request):
     if request.method == 'POST':
-        df = pd.read_csv('temp/orders.csv')
+        df = pd.read_csv(f'temp/{request.session["csvfileId"]}_orders.csv')
         value = request.POST.get('value',None)
         changed = request.POST.get('field',None)
         id = request.POST.get('id',None)
@@ -152,6 +150,10 @@ def correctData(request):
             value , error = timeCorrection(value,error, 'time_from')
             df.loc[df['ID'] == int(id) , 'timeFrom'] = value
         
+        elif changed == 'order_type':
+            value , error = orderTypeCheck(value,error,changed)
+            df.loc[df['ID'] == int(id) , 'order_type'] = value
+        
         else:
             value , error = positiveValue(value,error,changed)
             df.loc[df['ID'] == int(id) , changed] = value               
@@ -160,7 +162,7 @@ def correctData(request):
         df.loc[df['ID'] == int(id) , changed] = value
         df.loc[df['ID'] == int(id),'error'] = json.dumps(error)
         
-        df.to_csv('temp/orders.csv',index=False)
+        df.to_csv(f'temp/{request.session["csvfileId"]}_orders.csv',index=False)
         return JsonResponse(df.loc[df['ID'] == int(id) , :].to_json(orient='records'),status=200 , safe=False)
 
 
