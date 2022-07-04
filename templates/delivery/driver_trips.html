@@ -32,7 +32,7 @@
     <div class="d-flex trip-div justify-content-between align-items-start shadow border" data-id="{{trip.id}}">
         <div>
             <p class="m-0 mb-1 text-grey"> start Time </p>
-            <p class="m-0 mb-1"> 12 aug 2020 </p>
+            <p class="m-0 mb-1 time"> {{trip.start_time}} </p>
         </div>
         <div>
             <p class="m-0 mb-1 text-grey"> total deliveries </p>
@@ -72,7 +72,15 @@
             var trip_id = $(this).attr("data-id");
             window.location.href = "/core/driverTrips/{{id}}/"+trip_id;
         });
+        
+
+        document.querySelectorAll('.time').forEach((e)=>{
+            e.innerHTML = moment.unix(parseFloat(e.innerHTML)).format('MMMM Do YYYY');
+        });
+    
     });
+
+    
 </script>
 
 {% endblock %}

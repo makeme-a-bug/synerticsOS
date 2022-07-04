@@ -1,5 +1,8 @@
 {% extends 'delivery/driver_app_base.html' %}
+{% load static %}
 {% block stylesheet %}
+<link href='https://api.mapbox.com/mapbox-gl-js/v2.0.1/mapbox-gl.css' rel='stylesheet' />
+
 {% endblock %}
 
 {% block css %}
@@ -17,6 +20,10 @@
         color: rgb(34, 34, 34);
         font-size: 14px;
     }
+    #mapid{
+        width: 100%;
+        height: 310px;
+    }
 </style>
 {% endblock %}
 
@@ -24,8 +31,11 @@
 <a href="{% url 'delivery:driver_trips' id=id %}" class="text-syn h4" style="    position: absolute;
 right: 80px;"><i class="fas fa-arrow-alt-circle-left"></i></a>
 <h4 class="text-syn text-center">
-    Deliveries
+    Orders
 </h4>
+<div id="mapid" width="100%" height="100%">
+
+</div>
 <div class="d-flex flex-column w-100 justify-content-start align-items-center py-2" style="max-height: calc(100vh - 110px);overflow-y: auto;">
     {% if trip %}
     {% for order in trip.order_set.all %}
@@ -54,11 +64,176 @@ right: 80px;"><i class="fas fa-arrow-alt-circle-left"></i></a>
 
 
 {% block scripts %}
+<script src="https://unpkg.com/leaflet@1.6.0/dist/leaflet.js"integrity="sha512-gZwIG9x3wUXg2hdXF6+rVkLF/0Vi9U8D2Ntg4Ga5I5BZpVkVxlJWbSQtXPSiUTtC0TjtGOmxa1AJPuV0CPthew=="crossorigin=""></script>
+<script src='https://api.mapbox.com/mapbox-gl-js/v2.0.1/mapbox-gl.js'></script>
+<script src="{% static 'js/flexiblePolyline.js' %}"></script>
+
 {% endblock %}
 
 {% block js %}
 
 <script>
+
+    mapboxgl.accessToken = '{{mapboxApiKey}}'
+
+    var map = new mapboxgl.Map({
+        container: 'mapid',
+        style: 'mapbox://styles/mapbox/streets-v11',//'mapbox://styles/mapbox/streets-v11',//'mapbox://styles/cosmoboiy/ckug8xffi8jnq17prcevd5q9o',
+        center: [8.699088662141811,50.301355799999996],
+        zoom: 8
+    });
+
+    map.on('load',()=>{
+        get_layers()
+    })
+
+    const get_layers = (trip)=>{
+        orders_geojson = {
+            "type": "FeatureCollection",
+            "features": []
+        }
+
+        routes_geojson = {
+            "type": "FeatureCollection",
+            "features": []
+        }
+
+        driver_geojson = {
+            "type": "FeatureCollection",
+            "features": []
+        }
+        {% for order in trip.order_set.all %}
+            orderData = {
+                "type": "Feature",
+                "properties": {number:'{{order.stop_id}}'},
+                "geometry": {
+                    "type": "Point",
+                    "coordinates": [parseFloat("{{order.longitude}}"),parseFloat("{{order.latitude}}")]
+                }
+            }   
+            orders_geojson.features.push(orderData)
+        {% endfor %}
+        polyline = decode('{{trip.polyline}}')        
+        let routeData = {
+                "type": "Feature",
+                "properties": {},
+                "geometry": {
+                    "type": "LineString",
+                    "coordinates": polyline.polyline
+                }
+        }
+        routes_geojson.features.push(routeData)
+        
+        let driverData = {
+            "type": "Feature",
+                "properties": {},
+                "geometry": {
+                    "type": "Point",
+                    "coordinates": [parseFloat("{{trip.start_longitude}}"),parseFloat("{{trip.start_latitude}}")]
+                }
+        }
+
+        driver_latlon = [parseFloat("{{trip.start_longitude}}"),parseFloat("{{trip.start_latitude}}")]
+
+        driver_geojson.features.push(driverData)
+
+        add_routes_layer(routes_geojson)
+        add_orders_layer(orders_geojson)
+        add_drivers_layer(driver_geojson)
+    }
+
+    const add_orders_layer = (data)=>{
+        map.addSource('ordersSource', {
+        'type': 'geojson',
+        'data':data
+        });
+
+        if (!map.hasImage("order_img")){
+            let url = 'https://api.tiles.mapbox.com/v3/marker/pin-s+126caa.png';
+            map.loadImage(url, function(err, image) {
+            if (err) {
+            console.error('err image', err);
+            return;
+            }
+            map.addImage('order_img', image);
+            map.addLayer({
+                'id': 'orders',
+                'type': 'symbol',
+                'source': 'ordersSource',
+                'layout': {
+                    'icon-allow-overlap': true,
+                    'text-allow-overlap':true,
+                    'icon-image': 'order_img',
+                    // get the title name from the source's "title" property
+                    'text-field': ['get', 'number',],
+                    'text-font': [
+                    'Open Sans Semibold',
+                    'Arial Unicode MS Bold'
+                    ],
+                    'text-size': 11,
+                    'text-offset': [0, 0.25],
+                    'text-anchor': 'top'
+                    }
+            });
+        })
+
+        
+        }
+    }
+
+    const add_drivers_layer = (data)=>{
+        map.addSource('driversSource', {
+        'type': 'geojson',
+        'data':data
+        });
+        if (!map.hasImage("driver_img")){
+            let url = '{% static "img/Ellipse.png" %}';
+            map.loadImage(url, function(err, image) {
+            if (err) {
+            console.error('err image', err);
+            return;
+            }
+            map.addImage('driver_img', image);
+            map.addLayer({
+                'id': 'drivers',
+                'type': 'symbol',
+                'source': 'driversSource',
+                'layout': {
+                    'icon-allow-overlap': true,
+                    'text-allow-overlap':true,
+                    'icon-image': 'driver_img',
+                    }
+                });
+            })  
+        }
+        map.flyTo({
+            center: driver_latlon
+        });
+    }
+
+    const add_routes_layer = (data)=>{
+        map.addSource('routesSource', {
+            'type': 'geojson',
+            'data':data
+        });
+
+        map.addLayer({
+            'id': 'routes',
+            'type': 'line',
+            'source': 'routesSource',
+            'layout': {
+                'line-join': 'round',
+                'line-cap': 'round'
+            },
+            'paint': {
+                'line-color': '#126caa',
+                // '#888',
+                'line-width': 5
+            }
+        });
+    }
+
+
     function getCookie(name) {
         var cookieValue = null;
         if (document.cookie && document.cookie !== '') {
