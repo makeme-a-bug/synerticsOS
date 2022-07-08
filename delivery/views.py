@@ -205,16 +205,18 @@ class TripViewSet(viewsets.ModelViewSet):
         orderIDs = request.data.get("orderIDs",[])
         driverIDs = request.data.get("driverIDs",[])
         indexes = request.data.get("indexes",{'distance_index':0.4 , 'duration_index':0.4 , 'worth_index':0.2})
-        constraints =request.data.get("constraints",{'max_orders_per_driver':50})
+        constraints =request.data.get("constraints",{'max_orders_per_driver':50 , 'start_time':timezone.now()})
+        worth = request.data.get("worth",'buffer')
         orders = Order.objects.filter(id__in = [o for o in orderIDs],status = 0)
         drivers = Driver.objects.filter(id__in = [d for d in driverIDs])
-        result = dispatching_request(orders , drivers , constraints , indexes)
+        result = dispatching_request(orders , drivers , constraints , indexes,worth)
         trips = result['trips']
         res = []
         for t  in trips:
             driver = Driver.objects.get(id=t['driver']['identification'])
             trip = Trip.objects.create(user=self.request.user,total_duration = t['total_duration'] , total_distance = t['total_distance'] , start_time = t['start_time']
-             , end_time = t['end_time'], polyline = t['polyline'],driver = driver , start_address = driver.address ,  start_latitude = driver.latitude , start_longitude = driver.longitude)
+             , end_time = t['end_time'], polyline = t['polyline'],driver = driver , start_address = driver.address ,  start_latitude = driver.latitude , start_longitude = driver.longitude,worth = worth,
+             distance_index = indexes['distance_index'] , duration_index = indexes['duration_index'] , worth_index = indexes['worth_index'])
             res.append(trip)
             for o in t['orders']:
                 order = Order.objects.get(id=o['identification'])
@@ -249,8 +251,8 @@ class TripViewSet(viewsets.ModelViewSet):
         trips = result['trips']
         res = []
         for t  in trips:
-            trip = Trip.objects.create(user=self.request.user,total_duration = t['total_duration'] , total_distance = t['total_distance'] , start_time = t['start_time']
-             , end_time = t['end_time'], polyline = t['polyline'],start_address = geo.address ,  start_latitude = start_latitude , start_longitude = start_longitude)
+            trip = Trip.objects.create(user=self.request.user,total_duration = t['total_duration'] , total_distance = t['total_distance'] , start_time = startTime
+             , end_time = endTime, polyline = t['polyline'],start_address = geo.address ,  start_latitude = start_latitude , start_longitude = start_longitude , method = 1)
             res.append(trip)
             for o in t['orders']:
                 order = Order.objects.get(id=o['identification'])

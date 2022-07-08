@@ -12,7 +12,7 @@ from django.conf import settings
 from rest_framework.exceptions import ValidationError as VE
 
 from utils.helper import NanoID
-from utils.requests import dispatching_request
+from utils.requests import dispatching_request,disposition_request
 from account.models import User
 
 class OrderStatus(models.IntegerChoices):
@@ -213,6 +213,12 @@ class Trip(models.Model):
     duration_index = models.FloatField(default=0.5)
     worth_index = models.FloatField(default=0)
     driver = models.ForeignKey(Driver , on_delete=models.SET_NULL , null=True)
+    worth = models.TextField(default="buffer")
+    max_weight = models.FloatField(default=0, validators=[MinValueValidator(0)])
+    height = models.FloatField(default=0, validators=[MinValueValidator(0)])
+    width = models.FloatField(default=0, validators=[MinValueValidator(0)])
+    depth = models.FloatField(default=0, validators=[MinValueValidator(0)])
+    method = models.IntegerField(default=0, choices=((0,'Dispatching'),(1,'Dispostion')))
 
     @property
     def status(self):
@@ -225,10 +231,14 @@ class Trip(models.Model):
         orders = self.order_set.all()
         constraints = {"max_orders_per_driver":50 , 'start_time':self.start_time}
         indexes = {"distance_index":self.distance_index, 'duration_index':self.duration_index, "worth_index":self.worth_index}
-        result = dispatching_request(orders , [] , constraints , indexes,latitude = self.start_latitude, longitude = self.start_longitude , update=True)
+        if self.method == 0:
+            result = dispatching_request(orders , [] , constraints , indexes,worth=self.worth,latitude = self.start_latitude, longitude = self.start_longitude , update=True)
+        else:
+            dimensions = {'height':self.height, 'width':self.width, 'depth':self.depth}          
+            result = disposition_request(orders , self.start_time , self.end_time , self.start_latitude, self.start_longitude,dimensions,self.max_weight)
         trips = result['trips']
-        for t  in trips:
-            self.total_duration,self.total_distance,self.start_time,self.end_time,self.polyline = t['total_duration'] ,t['total_distance'] ,t['start_time'],t['end_time'],t['polyline']
+        for t  in trips[:1]:
+            self.total_duration,self.total_distance,self.polyline = t['total_duration'] ,t['total_distance'] ,t['polyline']
             for o in t['orders']:
                 order = Order.objects.get(id=o['identification'])
                 order.trip = self
@@ -240,6 +250,7 @@ class Trip(models.Model):
                 order.duration = o['duration']
                 order.distance = o['distance']
                 order.save()
+        self.save()
 
     #over-rides the delete function because it tries to change the status of orders related to deleted trips to UNASSIGNED
     def delete(self, *args, **kwargs):

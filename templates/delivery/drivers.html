@@ -46,7 +46,7 @@
                 {% if f.id == 'address' %}
                 {% for field in f %}
                 <div class="mb-1">
-                    <label for="" class="text-grey" style="font-size:11.5px">{{field.label}}</label>
+                    <label for="" class="text-grey" style="font-size:11.5px">{{field.label}} <span class="text-danger" >*</span> </label>
                     {{field|add_class:"form-control form-control-sm"}}
                     <label for="" class="text-danger" id="error_{{field.name}}"></label>
                 </div>

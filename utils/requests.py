@@ -6,10 +6,11 @@ import requests
 
 
 # send request to synertics dispatching api
-def dispatching_request(orders, drivers , constraints , indexes,*args,**kwargs):        
+def dispatching_request(orders, drivers , constraints:dict , indexes:dict , worth:str ='buffer',*args,**kwargs) -> dict:        
     orders = pd.DataFrame(list(orders.values()))
     orders['identification'] = orders['id']
-    orders = orders[['identification','buffer','longitude','latitude']]
+    orders['worth'] = orders[worth]
+    orders = orders[['identification','buffer','longitude','latitude','worth']]
 
     # if the update is true it means the trip is re-calculated as the trip can have no drivers so to be on same
     # side we create a temp driver from the values in the trip such as start_latitude and start_longitude
@@ -28,6 +29,7 @@ def dispatching_request(orders, drivers , constraints , indexes,*args,**kwargs):
         drivers=drivers[['identification','latitude','longitude']]
 
     url = "https://www.synertics.io/dispatching/batch/"
+
     headers = {
             'Authorization': "TOKEN "+ settings.SYNERTICS_API_KEY,
             'Content-Type': 'application/json'
@@ -48,12 +50,14 @@ def dispatching_request(orders, drivers , constraints , indexes,*args,**kwargs):
 
 
 # send request to synertics disposition api
-def disposition_request(orders, startTime , endTime , latitude , longitude ,dimensions,weight,*args,**kwargs):        
+def disposition_request(orders, startTime:float , endTime:float , latitude:float , longitude:float ,dimensions:dict,weight:float,*args,**kwargs) -> dict:        
     orders = pd.DataFrame(list(orders.values()))
     orders['identification'] = orders['id']
     orders = orders[['identification','buffer','longitude','latitude','time_from','time_to','weight','depth','width','height','order_type']]
 
     url = "https://www.synertics.io/disposition/batch/"
+    
+
     headers = {
             'Authorization': "TOKEN "+ settings.SYNERTICS_API_KEY,
             'Content-Type': 'application/json'

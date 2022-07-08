@@ -1,7 +1,7 @@
 {% extends 'delivery/base.html' %}
 {% load static %}
 {% load widget_tweaks %}
-{% block title %} Deliveries {% endblock %}
+{% block title %} Orders {% endblock %}
 
 {% block basecss %}
 <style>
@@ -263,6 +263,10 @@
         
         
         document.getElementsByName('startTime')[0].value = moment().format('YYYY-MM-DDTHH:mm')
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl)
+        })
     })
 
     const serialize = function(obj) {
@@ -702,6 +706,7 @@
                 method:0,
                 driverIDs:Array.prototype.slice.call(document.querySelectorAll('select[name="driverIDs"] option:checked'),0).map(function(v,i,a) {return v.value;}),
                 orderIDs:ids,
+                worth: document.getElementById('worth').value,
                 indexes:{
                     distance_index:parseFloat(document.getElementsByName('distance_index')[0].value),
                     duration_index:parseFloat(document.getElementsByName('duration_index')[0].value),
@@ -735,7 +740,7 @@
         }
     }
 
-
+    
 
     const input = document.getElementById("id_address");
     const options = {
@@ -753,7 +758,7 @@
         let autocomplete = new google.maps.places.Autocomplete(input1, options1);
     }
 
-
+    
 
     const dispatchingForm = `<h6 class="mt-2"> Time Frame</h6>
                     <div class="mb-2">
@@ -767,6 +772,17 @@
                         <select class="form-select form-select-sm" multiple id="driverIDs" name="driverIDs">
                         </select>
                         <label class="text-danger" id="error_driverIDs">  </label>
+                    </div>
+                    <div class="mb-2">
+                        <label for="worth" class="text-grey" style="font-size:11.5px">Map worth field <i class="fas fa-info-circle" data-bs-toggle="tooltip" data-bs-placement="top" title="numeric value that can represent anything between a priority level to a monetary value"></i></label>
+                        <select class="form-select form-select-sm"id="worth" name="worth">
+                            <option value="weight"> Weight </option>    
+                            <option value="depth"> Depth </option>    
+                            <option value="height"> Height </option>    
+                            <option value="width"> Width </option>    
+                            <option value="buffer"> Buffer </option>    
+                        </select>
+                        <label class="text-danger" id="error_worth">  </label>
                     </div>
                     <h6 class="mt-2"> Constraints</h6>
                     <div class="mb-2">
