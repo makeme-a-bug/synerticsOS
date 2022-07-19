@@ -10,8 +10,6 @@
     Automate Dispatching Activities
     <br/>
     <br/>
-    <a href="https://github.com/makeme-a-bug/synerticsOS">View Demo</a>
-    .
     <a href="https://github.com/makeme-a-bug/synerticsOS/issues">Report Bug</a>
     .
     <a href="https://github.com/makeme-a-bug/synerticsOS/issues">Request Feature</a>
@@ -60,21 +58,32 @@ python -m pip install -r requirements.txt
 to install all the dependences 
 
 and make sure you have the following API keys available.
-1. Synertics_api [https://synertics.io](synertics.io)
-2. Google (for geocoding and autocomplete)
-3. Mapbox (for map visualization)
+1. Synertics_api [synertics.io](https://synertics.io)
+2. Google (for geocoding and autocomplete) [setting up google services]()
+3. Mapbox (for map visualization)[setting up mapbox services]()
 
-add these api keys in the example_settings.py file inside synos folder. 
+we will be using the following API keys in the next step
 
 
 
 ### Installation
 
-first you will need to rename the settings_example.py file to settings.py
+first you will need create an .env file inside the root folder of the project
+and write the following lines to your .env file
+```sh
+SYN_API=<your_api_key>
+GOOGLE_API_KEY=<your_api_key>
+MAPBOX_API_KEY=<your_api_key>
+SECRET_KEY=<your_secret_key>
+GOOGLE_EMAIL=<your_google_email_address>
+GOOGLE_PASSWORD=<google_email_password>
+```
+
+you can generate django SECRET_KEY from [here](https://djecrety.ir/)
 
 then in shell you will need to run
 ```sh
-1. python manage.py makemigrations
+1. python manage.py makemigrations account delivery excelImport
 2. python manage.py migrate
 3. python manage.py runserver
  ```
