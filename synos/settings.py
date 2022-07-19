@@ -12,16 +12,19 @@ https://docs.djangoproject.com/en/4.0/ref/settings/
 
 from pathlib import Path
 import os
+import environ
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-
+env = environ.Env()
+env.read_env(env.str('ENV_PATH', os.path.join(BASE_DIR, '.env')))
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-e46=4kqo7g-zu2#8_a#5%t@(y-y!h!hqt_qwtqyr6a3yswu2l6'
+SECRET_KEY = env('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -29,16 +32,14 @@ DEBUG = True
 ALLOWED_HOSTS = []
 
 
-SYNERTICS_API_KEY = ""# add your SYNERTICS API KEY here
-GOOGLE_API_KEY = "" # add your GOOGLE API KEY here
-MAPBOX_API_KEY = "" # add your MAPBOX API KEY here
+SYNERTICS_API_KEY = env('SYN_API',None)
+GOOGLE_API_KEY = env('GOOGLE_API_KEY',None)
+MAPBOX_API_KEY = env('MAPBOX_API_KEY',None)
 
 if DEBUG:
     CURRENT_SITE = "http://127.0.0.1:8000"
 else:
     CURRENT_SITE = "https://synos.com" # change this to your domain name
-# Application definition
-
 # Application definition
 
 INSTALLED_APPS = [
@@ -48,7 +49,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'account',
+    'django.contrib.sites',
+    'account.apps.AccountConfig',
     'rest_framework.authtoken',
     'excelImport',
     'delivery',
@@ -56,6 +58,11 @@ INSTALLED_APPS = [
     'django_filters',
     'widget_tweaks',
     "debug_toolbar",
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    'allauth.socialaccount.providers.google',
+    'allauth.socialaccount.providers.github',
 ]
 
 MIDDLEWARE = [
@@ -149,13 +156,17 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media_cdn' , 'media_root')
 STATIC_URL = 'static/'
 MEDIA_URL = '/media/'
 
-AUTH_USER_MODEL = 'account.User'
+AUTH_USER_MODEL = 'synos_account.User'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.0/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',
+    'allauth.account.auth_backends.AuthenticationBackend'
+]
 
 REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'pagination.pagination.CustomPageNumberPagination',
@@ -169,10 +180,46 @@ REST_FRAMEWORK = {
     
 }
 
-# email settings 
+
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_USE_TLS = True
 EMAIL_PORT = 587
-EMAIL_HOST_USER = '' # your google email address
-EMAIL_HOST_PASSWORD = '' # your app password
+EMAIL_HOST_USER = 'cosmoboiy@gmail.com'
+EMAIL_HOST_PASSWORD = 'uisehpipnvzbtydm'
+
+
+#django-allauth settings
+SITE_ID = 1
+LOGIN_REDIRECT_URL = 'delivery:deliveries'
+
+
+SOCIALACCOUNT_QUERY_EMAIL = True
+ACCOUNT_LOGOUT_ON_GET= True
+ACCOUNT_UNIQUE_EMAIL = True
+ACCOUNT_EMAIL_REQUIRED = True
+
+ACCOUNT_USER_MODEL_USERNAME_FIELD = None
+ACCOUNT_USERNAME_REQUIRED = False
+ACCOUNT_AUTHENTICATION_METHOD = 'email'
+SOCIALACCOUNT_LOGIN_ON_GET=True
+
+SOCIALACCOUNT_PROVIDERS = {
+    'google': {
+        'SCOPE': [
+            'profile',
+            'email',
+        ],
+        'AUTH_PARAMS': {
+            'access_type': 'online',
+        }
+    },
+    'github': {
+        'SCOPE': [
+            'user',
+        ],
+        'AUTH_PARAMS': {
+            'access_type': 'online',
+        }
+    }
+}

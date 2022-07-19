@@ -60,9 +60,9 @@ python -m pip install -r requirements.txt
 to install all the dependences 
 
 and make sure you have the following API keys available.
-1. Synertics_api [https://synertics.io](synertics.io)
-2. Google (for geocoding and autocomplete)
-3. Mapbox (for map visualization)
+1. Synertics_api [synertics.io](https://synertics.io)
+2. Google (for geocoding and places) [setting up geocoding](https://developers.google.com/maps/documentation/places/web-service/cloud-setup) [setting up places](https://developers.google.com/maps/documentation/geocoding/cloud-setup)
+3. Mapbox (for map visualization) [mapbox key](https://docs.mapbox.com/help/getting-started/access-tokens/)
 
 add these api keys in the example_settings.py file inside synos folder. 
 
@@ -74,7 +74,7 @@ first you will need to rename the settings_example.py file to settings.py
 
 then in shell you will need to run
 ```sh
-1. python manage.py makemigrations
+1. python manage.py makemigrations account excelImport delivery
 2. python manage.py migrate
 3. python manage.py runserver
  ```

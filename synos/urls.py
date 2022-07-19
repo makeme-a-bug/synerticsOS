@@ -6,6 +6,7 @@ from . import settings
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('accounts/', include('allauth.urls')),
     path('excel/', include('excelImport.urls')),
     path('core/', include('delivery.urls')),
     path('__debug__/', include('debug_toolbar.urls')),
